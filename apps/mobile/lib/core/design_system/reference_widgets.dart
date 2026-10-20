@@ -3,16 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'components.dart';
 import '../localization/strings.dart';
 
-class _SectionGap extends StatelessWidget {
-  const _SectionGap();
-  @override
-  Widget build(BuildContext c) => ColoredBox(
-    color: Theme.of(c).scaffoldBackgroundColor,
-    child: const SizedBox(height: 9, width: double.infinity),
-  );
-}
-
-const sectionGap = _SectionGap();
+const sectionGap = SizedBox(height: 9);
 const menuBlue = Color(0xff168fe5);
 void openFeature(BuildContext c, String key) => c.push('/feature/$key');
 
