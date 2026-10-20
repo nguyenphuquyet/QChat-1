@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
@@ -9,6 +10,8 @@ import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
 import '../../core/localization/strings.dart';
 import 'message_status.dart';
+import 'chat_composer.dart';
+import '../../core/design_system/qchat_animations.dart';
 import '../../core/design_system/reference_widgets.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -31,10 +34,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   bool loading = true, emoji = false, uploading = false;
   bool attachments = false, voice = false;
   String myName = 'Q';
+  final inputFocus = FocusNode();
+  double keyboardHeight = 0;
+  Timer? panelTimer;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    inputFocus.addListener(() {
+      if (mounted) setState(() {});
+      settlePanels();
+    });
     scroll.addListener(() {
       if (scroll.hasClients &&
           scroll.position.extentAfter < 20 &&
@@ -69,6 +79,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     updates?.cancel();
     messageUpdates?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    panelTimer?.cancel();
+    inputFocus.dispose();
     input.dispose();
     scroll.dispose();
     super.dispose();
@@ -80,6 +92,97 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) load();
   }
+
+  /// Chạy mỗi khung hình khi bàn phím trượt: giữ danh sách bám đáy để không bị
+  /// lò xo (bouncing) của iOS kéo nẩy lại khi viewport đổi kích thước.
+  @override
+  void didChangeMetrics() {
+    if (!mounted) return;
+    if (scroll.hasClients && scroll.position.extentAfter < 100) scrollToEnd();
+    settlePanels();
+  }
+
+  /// Khi người dùng bấm lại vào ô nhập lúc panel đang mở, đợi bàn phím lên hẳn
+  /// rồi mới đóng panel -> chiều cao vùng đáy luôn liên tục, không nhảy.
+  void settlePanels() {
+    panelTimer?.cancel();
+    if (!(emoji || attachments) || !inputFocus.hasFocus) return;
+    panelTimer = Timer(const Duration(milliseconds: 280), () {
+      if (!mounted || !inputFocus.hasFocus) return;
+      setState(() {
+        emoji = false;
+        attachments = false;
+      });
+    });
+  }
+
+  void stickyState(VoidCallback change) {
+    final stick = !scroll.hasClients || scroll.position.extentAfter < 100;
+    setState(change);
+    if (stick) scrollToEnd();
+  }
+
+  void toggleVoice() {
+    stickyState(() {
+      voice = !voice;
+      emoji = false;
+      attachments = false;
+    });
+    voice ? inputFocus.unfocus() : inputFocus.requestFocus();
+  }
+
+  void toggleEmoji() {
+    if (emoji) {
+      inputFocus.requestFocus();
+      return;
+    }
+    stickyState(() {
+      emoji = true;
+      attachments = false;
+      voice = false;
+    });
+    inputFocus.unfocus();
+  }
+
+  void togglePlus() {
+    if (attachments) {
+      inputFocus.requestFocus();
+      return;
+    }
+    stickyState(() {
+      attachments = true;
+      emoji = false;
+      voice = false;
+    });
+    inputFocus.unfocus();
+  }
+
+  void dismissInput() {
+    inputFocus.unfocus();
+    if (emoji || attachments) {
+      stickyState(() {
+        emoji = false;
+        attachments = false;
+      });
+    }
+  }
+
+  void insertEmoji(String e) {
+    final text = input.text;
+    final sel = input.selection;
+    final start = sel.isValid ? sel.start : text.length;
+    final end = sel.isValid ? sel.end : text.length;
+    input.value = TextEditingValue(
+      text: text.replaceRange(start, end, e),
+      selection: TextSelection.collapsed(offset: start + e.length),
+    );
+    setState(() {});
+  }
+
+  static const emojis = [
+    '😀', '😊', '😂', '🥰', '😍', '🤔', '😢', '😎',
+    '👍', '👏', '🙏', '💚', '❤️', '🎉', '🌻', '☕',
+  ];
 
   void scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -249,7 +352,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return a != null && b != null && a.difference(b).inMinutes.abs() >= 5;
   }
 
-  Widget attachmentPanel(BuildContext c) {
+  Widget attachmentPanel(BuildContext c, double safeBottom) {
     final actions = <(String, String, VoidCallback)>[
       (
         'image',
@@ -263,53 +366,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       ('file', 'file', () => attach()),
       ('music', 'music', () => attach(extensions: ['mp3'])),
     ];
-    final bottomInset = MediaQuery.paddingOf(c).bottom;
-    return Container(
-      height: 245 + bottomInset,
-      color: surface(c).withValues(alpha: .6),
-      padding: EdgeInsets.fromLTRB(12, 16, 12, 8 + bottomInset),
-      child: GridView.count(
-        crossAxisCount: 4,
-        childAspectRatio: .88,
-        children: [
-          for (final a in actions)
-            GestureDetector(
-              onTap: uploading ? null : a.$3,
-              child: Column(
-                children: [
-                  Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      color: surface(c),
-                      borderRadius: BorderRadius.circular(17),
-                    ),
-                    child: Center(
-                      child: QChatIcon(
-                        a.$1,
-                        size: 29,
-                        color: const Color(0xff505050),
-                        filled: true,
-                      ),
+    return GridView.count(
+      padding: EdgeInsets.fromLTRB(12, 16, 12, 8 + safeBottom),
+      crossAxisCount: 4,
+      childAspectRatio: .88,
+      children: [
+        for (final a in actions)
+          GestureDetector(
+            onTap: uploading ? null : a.$3,
+            child: Column(
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: surface(c),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  child: Center(
+                    child: QChatIcon(
+                      a.$1,
+                      size: 29,
+                      color: const Color(0xff505050),
+                      filled: true,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    tr(c, a.$2),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xff888888),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  tr(c, a.$2),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Color(0xff888888)),
+                ),
+              ],
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
+
+  Widget emojiPanel(BuildContext c, double safeBottom) => GridView.count(
+    padding: EdgeInsets.fromLTRB(12, 8, 12, 8 + safeBottom),
+    crossAxisCount: 8,
+    children: [
+      for (final e in emojis)
+        GestureDetector(
+          onTap: () => insertEmoji(e),
+          child: Center(child: Text(e, style: const TextStyle(fontSize: 26))),
+        ),
+    ],
+  );
 
   void menu(Map<String, dynamic> m) {
     qchatSheet(context, [
@@ -372,6 +479,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           message['senderId'] == ref.read(clientProvider).userId &&
           message['recalledAt'] == null,
     );
+    final keyboard = MediaQuery.viewInsetsOf(c).bottom;
+    final safeBottom = MediaQuery.viewPaddingOf(c).bottom;
+    if (keyboard > keyboardHeight) keyboardHeight = keyboard;
+    final panelOpen = emoji || attachments;
+    final panelHeight = math.max(keyboardHeight, 250 + safeBottom);
+    // Hàm liên tục theo bàn phím: không còn bước nhảy từ viewInsets -> safe area.
+    final reserved = math.max(keyboard, panelOpen ? panelHeight : safeBottom);
     return QChatPage(
       title: title,
       leading: QChatIconButton(
@@ -423,8 +537,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 ? const QChatLoading()
                 : messages.isEmpty
                 ? QChatEmptyState(tr(c, 'emptyChats'))
-                : ListView.builder(
+                : GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: dismissInput,
+                    child: ListView.builder(
                     controller: scroll,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     itemCount: messages.length,
                     itemBuilder: (c, i) {
                       final m = messages[i],
@@ -489,6 +608,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       );
                     },
                   ),
+                  ),
           ),
           if (reply != null)
             QChatListTile(
@@ -498,127 +618,71 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 onTap: () => setState(() => reply = null),
               ),
             ),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(c).brightness == Brightness.dark
-                  ? surface(c)
-                  : const Color(0xfff7f7f7),
-              border: const Border(
-                top: BorderSide(color: QChatColors.line, width: .5),
+          if (uploading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                tr(c, 'loading'),
+                style: const TextStyle(fontSize: 12, color: QChatColors.muted),
               ),
             ),
-            padding: EdgeInsets.fromLTRB(
-              8,
-              7,
-              8,
-              7 +
-                  (MediaQuery.viewInsetsOf(c).bottom > 0
-                      ? MediaQuery.viewInsetsOf(c).bottom
-                      : (attachments || emoji
-                          ? 0
-                          : MediaQuery.paddingOf(c).bottom)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                QChatIconButton(
-                  voice ? 'keyboard' : 'voice',
-                  size: 28,
-                  label: tr(c, 'voice'),
-                  onTap: () => setState(() {
-                    voice = !voice;
-                    attachments = false;
-                    emoji = false;
-                  }),
+          Container(
+            decoration: BoxDecoration(
+              color: navigationSurface(c),
+              border: Border(
+                top: BorderSide(
+                  color: ink(c).withValues(alpha: .08),
+                  width: .5,
                 ),
-                Expanded(
-                  child: voice
-                      ? GestureDetector(
-                          onTap: () => openFeature(c, 'voice'),
-                          child: Container(
-                            height: 42,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: QChatColors.line),
-                              borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ChatInputBar(
+                  controller: input,
+                  focusNode: inputFocus,
+                  voice: voice,
+                  hasText: input.text.trim().isNotEmpty,
+                  voiceLabel: tr(c, 'voice'),
+                  emojiLabel: 'Emoji',
+                  plusLabel: tr(c, 'file'),
+                  sendLabel: tr(c, 'send'),
+                  holdLabel: tr(c, 'holdToTalk'),
+                  onVoice: toggleVoice,
+                  onEmoji: toggleEmoji,
+                  onPlus: togglePlus,
+                  onSend: send,
+                  onHold: () => openFeature(c, 'voice'),
+                  onChanged: (_) => setState(() {}),
+                ),
+                // Vùng đáy: = bàn phím | panel emoji/đính kèm | safe area.
+                // Khi bàn phím đang chuyển động thì không animate thêm để khỏi trễ.
+                AnimatedContainer(
+                  duration: keyboard > 0 || inputFocus.hasFocus
+                      ? Duration.zero
+                      : qchatDuration(c),
+                  curve: Curves.easeOut,
+                  height: reserved,
+                  child: panelOpen
+                      ? ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.topCenter,
+                            minHeight: 0,
+                            maxHeight: panelHeight,
+                            child: SizedBox(
+                              height: panelHeight,
+                              child: emoji
+                                  ? emojiPanel(c, safeBottom)
+                                  : attachmentPanel(c, safeBottom),
                             ),
-                            child: Text(tr(c, 'holdToTalk')),
                           ),
                         )
-                      : QChatTextInput(
-                          controller: input,
-                          hint: '',
-                          lines: 4,
-                          onChanged: (_) => setState(() {}),
-                        ),
+                      : null,
                 ),
-                QChatIconButton(
-                  'emoji',
-                  size: 28,
-                  label: 'Emoji',
-                  onTap: () => setState(() {
-                    emoji = !emoji;
-                    attachments = false;
-                    voice = false;
-                    FocusScope.of(c).unfocus();
-                  }),
-                ),
-                if (input.text.trim().isEmpty)
-                  QChatIconButton(
-                    'plus',
-                    size: 28,
-                    label: tr(c, 'file'),
-                    onTap: () => setState(() {
-                      attachments = !attachments;
-                      emoji = false;
-                      FocusScope.of(c).unfocus();
-                    }),
-                  )
-                else
-                  QChatButton(tr(c, 'send'), onTap: send),
               ],
             ),
           ),
-          if (uploading) Text(tr(c, 'loading')),
-          if (attachments) attachmentPanel(c),
-          if (emoji)
-            Container(
-              color: surface(c),
-              height: 160 + MediaQuery.paddingOf(c).bottom,
-              padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(c).bottom),
-              child: GridView.count(
-                crossAxisCount: 8,
-                children: [
-                  for (final e in [
-                    '😀',
-                    '😊',
-                    '😂',
-                    '🥰',
-                    '😍',
-                    '🤔',
-                    '😢',
-                    '😎',
-                    '👍',
-                    '👏',
-                    '🙏',
-                    '💚',
-                    '❤️',
-                    '🎉',
-                    '🌻',
-                    '☕',
-                  ])
-                    GestureDetector(
-                      onTap: () {
-                        input.text += e;
-                        setState(() {});
-                      },
-                      child: Center(
-                        child: Text(e, style: const TextStyle(fontSize: 26)),
-                      ),
-                    ),
-                ],
-              ),
-            ),
         ],
       ),
     );
