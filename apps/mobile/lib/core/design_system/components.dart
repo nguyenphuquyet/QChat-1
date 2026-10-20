@@ -68,7 +68,7 @@ class QChatPage extends StatelessWidget {
         color: pageColor,
         child: SafeArea(
           top: !edgeToEdge,
-          bottom: !edgeToEdge,
+          bottom: false,
           child: Column(
             children: [
               if (title != null)
