@@ -42,7 +42,8 @@ class QChatPage extends StatelessWidget {
   final bool edgeToEdge;
   @override
   Widget build(BuildContext c) {
-    final pageColor = background ?? Theme.of(c).scaffoldBackgroundColor;
+    final pageColor = background ??
+        (edgeToEdge ? Theme.of(c).scaffoldBackgroundColor : surface(c));
     final topColor = statusBackground ?? pageColor;
     final bottomColor = navigationBackground ?? pageColor;
     final topBrightness = ThemeData.estimateBrightnessForColor(topColor);
