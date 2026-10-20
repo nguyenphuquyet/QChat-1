@@ -94,9 +94,14 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
   /// Hiện action sheet chọn quyền riêng tư
   void _pickPrivacy() {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    const itemHeight = 52.0;
+    final bottomPadding = bottomInset > 0 ? bottomInset : 10.0;
+    final totalHeight = itemHeight * 2 + 1 + bottomPadding;
+
     TPopup.show(
       context,
       options: TPopupOptions.bottom(
+        height: totalHeight,
         useSafeArea: false,
         radius: 12,
         backgroundColor: surface(context),
@@ -104,6 +109,7 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _privacyOption(
+              height: itemHeight,
               label: tr(context, 'friends'),
               selected: !private,
               onTap: () {
@@ -112,11 +118,12 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
               },
             ),
             Divider(
-              height: 0.5,
+              height: 1,
               thickness: 0.5,
               color: ink(context).withValues(alpha: 0.08),
             ),
             _privacyOption(
+              height: itemHeight,
               label: tr(context, 'private'),
               selected: private,
               onTap: () {
@@ -124,7 +131,7 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
                 setState(() => private = true);
               },
             ),
-            SizedBox(height: bottomInset > 0 ? bottomInset : 12),
+            SizedBox(height: bottomPadding),
           ],
         ),
       ),
@@ -132,6 +139,7 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
   }
 
   Widget _privacyOption({
+    required double height,
     required String label,
     required bool selected,
     required VoidCallback onTap,
@@ -140,7 +148,7 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          height: 56,
+          height: height,
           alignment: Alignment.center,
           child: Text(
             label,
