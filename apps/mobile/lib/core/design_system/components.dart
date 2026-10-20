@@ -68,16 +68,25 @@ class QChatPage extends StatelessWidget {
         child: Column(
           children: [
             if (title != null)
-              SafeArea(
-                bottom: false,
-                child: QChatAppBar(
-                  title: title!,
-                  leading: leading,
-                  trailing: trailing,
+              ColoredBox(
+                color: topColor,
+                child: SafeArea(
+                  bottom: false,
+                  child: QChatAppBar(
+                    title: title!,
+                    leading: leading,
+                    trailing: trailing,
+                  ),
                 ),
               )
             else if (!edgeToEdge)
-              SizedBox(height: MediaQuery.paddingOf(c).top),
+              ColoredBox(
+                color: topColor,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: MediaQuery.paddingOf(c).top,
+                ),
+              ),
             Expanded(
               child: MediaQuery.removePadding(
                 context: c,
@@ -90,7 +99,7 @@ class QChatPage extends StatelessWidget {
             ),
             if (bottom != null)
               ColoredBox(
-                color: navigationBackground ?? pageColor,
+                color: bottomColor,
                 child: SafeArea(top: false, child: bottom!),
               ),
           ],

@@ -263,10 +263,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       ('file', 'file', () => attach()),
       ('music', 'music', () => attach(extensions: ['mp3'])),
     ];
+    final bottomInset = MediaQuery.paddingOf(c).bottom;
     return Container(
-      height: 245,
+      height: 245 + bottomInset,
       color: surface(c).withValues(alpha: .6),
-      padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+      padding: EdgeInsets.fromLTRB(12, 16, 12, 8 + bottomInset),
       child: GridView.count(
         crossAxisCount: 4,
         childAspectRatio: .88,
@@ -510,7 +511,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               8,
               7,
               8,
-              7 + MediaQuery.viewInsetsOf(c).bottom,
+              7 +
+                  (MediaQuery.viewInsetsOf(c).bottom > 0
+                      ? MediaQuery.viewInsetsOf(c).bottom
+                      : (attachments || emoji
+                          ? 0
+                          : MediaQuery.paddingOf(c).bottom)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -578,7 +584,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           if (emoji)
             Container(
               color: surface(c),
-              height: 160,
+              height: 160 + MediaQuery.paddingOf(c).bottom,
+              padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(c).bottom),
               child: GridView.count(
                 crossAxisCount: 8,
                 children: [
