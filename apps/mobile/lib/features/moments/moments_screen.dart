@@ -18,8 +18,8 @@ class MomentsScreen extends ConsumerStatefulWidget {
 class _MomentsScreenState extends ConsumerState<MomentsScreen> {
   late Future<dynamic> feed;
   StreamSubscription<void>? updates;
-
   String? error;
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +36,6 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
   @override
   void dispose() {
     updates?.cancel();
-
     super.dispose();
   }
 
@@ -93,215 +92,11 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                       child: QChatEmptyState(tr(c, 'emptyMoments')),
                     ),
                   for (final p in posts)
-                    Container(
-                      color: surface(c),
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          UserAvatar(p['author'], size: 40),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  p['author']['nickname'],
-                                  style: const TextStyle(
-                                    color: Color(0xff546d91),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(p['text']),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    for (final media in p['media'])
-                                      GestureDetector(
-                                        onTap: () => context.push(
-                                          '/media/${media['mediaId']}',
-                                        ),
-                                        child: SizedBox(
-                                          width: 120,
-                                          height: 120,
-                                          child:
-                                              (media['media']?['mime']
-                                                          as String? ??
-                                                      '')
-                                                  .startsWith('video/')
-                                              ? ColoredBox(
-                                                  color: const Color(
-                                                    0xff252525,
-                                                  ),
-                                                  child: Center(
-                                                    child: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        const QChatIcon(
-                                                          'videoCall',
-                                                          color: Colors.white,
-                                                          size: 36,
-                                                        ),
-                                                        Text(
-                                                          tr(c, 'play'),
-                                                          style:
-                                                              const TextStyle(
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                )
-                                              : MediaImage(
-                                                  id: media['mediaId'],
-                                                ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    Text(
-                                      p['createdAt'].toString().substring(
-                                        0,
-                                        10,
-                                      ),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: QChatColors.muted,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    QChatButton(
-                                      '♡ ${(p['likes'] as List).length}',
-                                      secondary: true,
-                                      onTap: () async {
-                                        try {
-                                          final liked = (p['likes'] as List)
-                                              .any(
-                                                (l) =>
-                                                    l['userId'] ==
-                                                    ref
-                                                        .read(clientProvider)
-                                                        .userId,
-                                              );
-                                          if (liked) {
-                                            await ref
-                                                .read(clientProvider)
-                                                .dio
-                                                .delete(
-                                                  '/moments/${p['id']}/likes',
-                                                );
-                                          } else {
-                                            await ref
-                                                .read(clientProvider)
-                                                .post(
-                                                  '/moments/${p['id']}/likes',
-                                                  {},
-                                                );
-                                          }
-                                          if (mounted) setState(load);
-                                        } catch (e) {
-                                          if (mounted) {
-                                            setState(
-                                              () =>
-                                                  error = tr(c, 'networkError'),
-                                            );
-                                          }
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    QChatButton(
-                                      tr(c, 'comment'),
-                                      secondary: true,
-                                      onTap: () async {
-                                        final value = await editText(
-                                          c,
-                                          tr(c, 'comment'),
-                                          maxLength: 1000,
-                                          lines: 3,
-                                        );
-                                        if (value == null ||
-                                            value.isEmpty ||
-                                            !mounted) {
-                                          return;
-                                        }
-                                        try {
-                                          await ref.read(clientProvider).post(
-                                            '/moments/${p['id']}/comments',
-                                            {'text': value},
-                                          );
-                                          if (mounted) setState(load);
-                                        } catch (_) {
-                                          if (mounted) {
-                                            setState(
-                                              () => error = tr(
-                                                context,
-                                                'networkError',
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
-                                    ),
-                                    if (p['authorId'] ==
-                                        ref.read(clientProvider).userId)
-                                      QChatButton(
-                                        tr(c, 'delete'),
-                                        secondary: true,
-                                        onTap: () async {
-                                          if (!await confirmAction(
-                                                c,
-                                                tr(c, 'delete'),
-                                                tr(c, 'deleteMoment'),
-                                              ) ||
-                                              !mounted) {
-                                            return;
-                                          }
-                                          try {
-                                            await ref
-                                                .read(clientProvider)
-                                                .dio
-                                                .delete('/moments/${p['id']}');
-                                            if (mounted) setState(load);
-                                          } catch (_) {
-                                            if (mounted) {
-                                              setState(
-                                                () => error = tr(
-                                                  context,
-                                                  'networkError',
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                      ),
-                                  ],
-                                ),
-                                for (final comment in p['comments'])
-                                  Padding(
-                                    padding: const EdgeInsets.all(6),
-                                    child: Text(
-                                      comment['text'],
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    _MomentCard(
+                      post: p,
+                      myId: ref.read(clientProvider).userId,
+                      onReload: () => setState(load),
+                      onError: (msg) => setState(() => error = msg),
                     ),
                 ],
               );
@@ -311,4 +106,320 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
       ],
     ),
   );
+}
+
+// ─── Card từng bài viết ──────────────────────────────────────────────────────
+
+class _MomentCard extends ConsumerStatefulWidget {
+  const _MomentCard({
+    required this.post,
+    required this.myId,
+    required this.onReload,
+    required this.onError,
+  });
+  final Map post;
+  final String? myId;
+  final VoidCallback onReload;
+  final void Function(String) onError;
+
+  @override
+  ConsumerState<_MomentCard> createState() => _MomentCardState();
+}
+
+class _MomentCardState extends ConsumerState<_MomentCard> {
+  /// null = ẩn input; non-null = đang mở input cho bài post này
+  bool _showInput = false;
+  final _commentCtrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendComment() async {
+    final text = _commentCtrl.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      await ref.read(clientProvider).post(
+        '/moments/${widget.post['id']}/comments',
+        {'text': text},
+      );
+      _commentCtrl.clear();
+      setState(() {
+        _showInput = false;
+        _sending = false;
+      });
+      widget.onReload();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _sending = false);
+        widget.onError(tr(context, 'networkError'));
+      }
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    final liked = (widget.post['likes'] as List).any(
+      (l) => l['userId'] == widget.myId,
+    );
+    try {
+      if (liked) {
+        await ref
+            .read(clientProvider)
+            .dio
+            .delete('/moments/${widget.post['id']}/likes');
+      } else {
+        await ref
+            .read(clientProvider)
+            .post('/moments/${widget.post['id']}/likes', {});
+      }
+      widget.onReload();
+    } catch (_) {
+      if (mounted) widget.onError(tr(context, 'networkError'));
+    }
+  }
+
+  Future<void> _delete() async {
+    if (!await confirmAction(
+          context,
+          tr(context, 'delete'),
+          tr(context, 'deleteMoment'),
+        ) ||
+        !mounted) {
+      return;
+    }
+    try {
+      await ref
+          .read(clientProvider)
+          .dio
+          .delete('/moments/${widget.post['id']}');
+      widget.onReload();
+    } catch (_) {
+      if (mounted) widget.onError(tr(context, 'networkError'));
+    }
+  }
+
+  @override
+  Widget build(BuildContext c) {
+    final p = widget.post;
+    final liked = (p['likes'] as List).any((l) => l['userId'] == widget.myId);
+    return Container(
+      color: surface(c),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          UserAvatar(p['author'], size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Tên tác giả
+                Text(
+                  p['author']['nickname'],
+                  style: const TextStyle(
+                    color: Color(0xff546d91),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Nội dung
+                Text(p['text']),
+                const SizedBox(height: 10),
+                // Media
+                if ((p['media'] as List).isNotEmpty)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final media in p['media'])
+                        GestureDetector(
+                          onTap: () =>
+                              context.push('/media/${media['mediaId']}'),
+                          child: SizedBox(
+                            width: 120,
+                            height: 120,
+                            child: (media['media']?['mime'] as String? ?? '')
+                                    .startsWith('video/')
+                                ? ColoredBox(
+                                    color: const Color(0xff252525),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const QChatIcon(
+                                            'videoCall',
+                                            color: Colors.white,
+                                            size: 36,
+                                          ),
+                                          Text(
+                                            tr(c, 'play'),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : MediaImage(id: media['mediaId']),
+                          ),
+                        ),
+                    ],
+                  ),
+                const SizedBox(height: 10),
+                // Hàng ngày + thao tác
+                Row(
+                  children: [
+                    Text(
+                      p['createdAt'].toString().substring(0, 10),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: QChatColors.muted,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Nút like
+                    GestureDetector(
+                      onTap: _toggleLike,
+                      child: Row(
+                        children: [
+                          QChatIcon(
+                            'image', // placeholder — dùng icon phù hợp
+                            size: 18,
+                            color: liked
+                                ? QChatColors.danger
+                                : QChatColors.muted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${(p['likes'] as List).length}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: liked
+                                  ? QChatColors.danger
+                                  : QChatColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Nút bình luận inline
+                    GestureDetector(
+                      onTap: () => setState(() => _showInput = !_showInput),
+                      child: QChatIcon(
+                        'chats',
+                        size: 18,
+                        color: _showInput
+                            ? QChatColors.green
+                            : QChatColors.muted,
+                      ),
+                    ),
+                    // Nút xóa (chỉ chủ bài)
+                    if (p['authorId'] == widget.myId) ...[
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        onTap: _delete,
+                        child: const QChatIcon(
+                          'close',
+                          size: 18,
+                          color: QChatColors.muted,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                // Danh sách bình luận
+                if ((p['comments'] as List).isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: ink(c).withValues(alpha: .05),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final comment in p['comments'])
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: ink(c),
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text:
+                                        '${comment['author']?['nickname'] ?? ''}: ',
+                                    style: const TextStyle(
+                                      color: Color(0xff546d91),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  TextSpan(text: comment['text']),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                // Input bình luận inline
+                if (_showInput)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TInput(
+                            controller: _commentCtrl,
+                            hintText: tr(c, 'comment'),
+                            maxLines: 3,
+                            minLines: 1,
+                            maxLength: 1000,
+                            enabled: !_sending,
+                            autofocus: true,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _sending ? null : _sendComment,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: QChatColors.green,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              tr(c, 'send'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

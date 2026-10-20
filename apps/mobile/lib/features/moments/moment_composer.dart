@@ -91,6 +91,18 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
     }
   }
 
+  /// Hiện action sheet chọn quyền riêng tư
+  void _pickPrivacy() {
+    TActionSheet.showList<bool>(
+      context,
+      items: [
+        TActionSheetItem(value: false, label: tr(context, 'friends')),
+        TActionSheetItem(value: true, label: tr(context, 'private')),
+      ],
+      onSelected: (item) => setState(() => private = item.value),
+    );
+  }
+
   @override
   Widget build(BuildContext c) => PopScope(
     canPop: !busy,
@@ -106,13 +118,16 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(
+          TInput(
             controller: text,
             maxLength: 5000,
-            maxLines: 5,
+            maxLines: 8,
+            minLines: 3,
             enabled: !busy,
-            decoration: InputDecoration(hintText: tr(c, 'writeMoment')),
+            hintText: tr(c, 'writeMoment'),
+            borderless: false,
           ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             children: [
@@ -128,7 +143,11 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
               ),
             ],
           ),
-          Text(tr(c, 'mediaLimit')),
+          const SizedBox(height: 4),
+          Text(
+            tr(c, 'mediaLimit'),
+            style: const TextStyle(fontSize: 12, color: QChatColors.muted),
+          ),
           for (final file in files)
             QChatListTile(
               title: file.name,
@@ -147,13 +166,40 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
                 },
               ),
             ),
-          SwitchListTile(
-            title: Text(tr(c, 'private')),
-            value: private,
-            onChanged: busy ? null : (v) => setState(() => private = v),
+          const SizedBox(height: 4),
+          // Chọn quyền riêng tư bằng action sheet
+          GestureDetector(
+            onTap: busy ? null : _pickPrivacy,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  const QChatIcon('lock', size: 20, color: QChatColors.muted),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      tr(c, private ? 'private' : 'friends'),
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  const QChatIcon(
+                    'chevron',
+                    size: 18,
+                    color: Color(0xffb8b8b8),
+                  ),
+                ],
+              ),
+            ),
           ),
           if (error != null)
-            Text(error!, style: const TextStyle(color: QChatColors.danger)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                error!,
+                style: const TextStyle(color: QChatColors.danger),
+              ),
+            ),
           QChatButton(
             tr(c, busy ? 'loading' : 'post'),
             onTap: busy || picking ? null : post,

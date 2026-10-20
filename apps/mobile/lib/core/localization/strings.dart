@@ -257,6 +257,7 @@ const translations = <String, List<String>>{
   'search': ['Search', 'Tìm kiếm', '搜索'],
   'newFriends': ['New friends', 'Bạn bè mới', '新的朋友'],
   'groups': ['Group chats', 'Trò chuyện nhóm', '群聊'],
+  'friends': ['Friends', 'Bạn bè', '好友可见'],
   'moments': ['Moments', 'Khoảnh khắc', '朋友圈'],
   'scan': ['Scan', 'Quét', '扫一扫'],
   'settings': ['Settings', 'Cài đặt', '设置'],
