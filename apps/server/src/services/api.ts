@@ -11,6 +11,7 @@ import { messagesRoute } from "../modules/messages";
 import { momentsRoute } from "../modules/moments";
 import { mediaRoute } from "../modules/media";
 import { usersRoute } from "../modules/users";
+import { publicUser } from "./messages";
 import { searchRoute } from "../modules/search";
 import { uuid } from "../../../../packages/contracts";
 export async function handle(request: Request) {
@@ -95,7 +96,7 @@ export async function handle(request: Request) {
           result = { ok: true };
         }
         if (path[1] === "sessions" && method === "GET")
-          result = await db.userSession.findMany({
+          result = (await db.userSession.findMany({
             where: { userId, revokedAt: null },
             select: {
               id: true,
@@ -103,7 +104,7 @@ export async function handle(request: Request) {
               createdAt: true,
               expiresAt: true,
             },
-          });
+          })).map((session) => ({ ...session, current: session.id === sessionId }));
         if (path[1] === "sessions" && path[2] && method === "DELETE") {
           await db.userSession.updateMany({
             where: { id: uuid.parse(path[2]), userId },
@@ -116,6 +117,7 @@ export async function handle(request: Request) {
         if (method === "GET")
           result = await db.blockedUser.findMany({
             where: { ownerId: userId },
+            include: { target: { select: publicUser } },
           });
         if (method === "POST") {
           const { targetId } = z

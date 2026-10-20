@@ -34,12 +34,18 @@ class _CallScreenState extends ConsumerState<CallScreen> {
 
   Future<void> start() async {
     try {
+      await ref.read(preferencesProvider.notifier).ready;
+      if (!mounted) return;
       await localView.initialize();
       await remoteView.initialize();
       stream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
         'video': widget.video,
       });
+      muted = ref.read(preferencesProvider).startMuted;
+      for (final track in stream!.getAudioTracks()) {
+        track.enabled = !muted;
+      }
       localView.srcObject = stream;
       peer = await createPeerConnection({
         'iceServers': [

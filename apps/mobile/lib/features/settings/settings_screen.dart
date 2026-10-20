@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
+import 'settings_tools.dart';
+import '../../core/design_system/dialogs.dart';
 import '../../core/design_system/components.dart';
 import '../../core/design_system/reference_widgets.dart';
 import '../../core/localization/strings.dart';
@@ -38,7 +40,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         QChatSearchBar(controller: search, onChanged: (_) => setState(() {})),
         const SectionLabel('account'),
         entry(c, 'profile', route: '/profile'),
-        entry(c, 'security', route: '/sessions'),
+        entry(c, 'security'),
         entry(c, 'permissions'),
         const SectionLabel('general'),
         entry(c, 'notifications'),
@@ -76,9 +78,21 @@ class SettingsDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsDetailScreenState extends ConsumerState<SettingsDetailScreen> {
-  late final Future<dynamic> user = ref.read(clientProvider).get('/users/me');
+  late final Future<dynamic> user = ref
+      .read(clientProvider)
+      .get('/users/me', cached: false);
   @override
   Widget build(BuildContext c) {
+    if ([
+      'security',
+      'permissions',
+      'storage',
+      'conversations',
+      'calls',
+      'blocks',
+    ].contains(widget.kind)) {
+      return SettingsTools(kind: widget.kind);
+    }
     final prefs = ref.watch(preferencesProvider);
     return QChatPage(
       title: tr(c, widget.kind),
@@ -133,6 +147,11 @@ class _SettingsDetailScreenState extends ConsumerState<SettingsDetailScreen> {
                 return ListView(
                   children: [
                     sectionGap,
+                    if (widget.kind == 'friendPermissions')
+                      MenuRow(
+                        'blocks',
+                        onTap: () => c.push('/settings/blocks'),
+                      ),
                     MenuRow(
                       widget.kind == 'notifications'
                           ? 'previewPush'
@@ -209,22 +228,64 @@ class _DataListScreenState extends ConsumerState<DataListScreen> {
               QChatListTile(
                 title: widget.kind == 'sessions'
                     ? item['deviceName']
-                    : item['text'],
-                subtitle: item['createdAt'],
+                    : ((item['text'] as String? ?? '').isEmpty
+                          ? tr(c, 'file')
+                          : item['text']),
+                subtitle: item['current'] == true
+                    ? tr(c, 'currentSession')
+                    : item['createdAt'],
                 onTap: widget.kind == 'sessions'
-                    ? () => qchatSheet(c, [
+                    ? () async {
+                        if (!await confirmAction(
+                              c,
+                              tr(c, 'logout'),
+                              tr(c, 'revokeSession'),
+                            ) ||
+                            !mounted) {
+                          return;
+                        }
+                        try {
+                          await ref
+                              .read(clientProvider)
+                              .dio
+                              .delete('/auth/sessions/${item['id']}');
+                          if (mounted) setState(load);
+                        } catch (_) {
+                          if (c.mounted) {
+                            qchatSheet(c, [(tr(c, 'networkError'), () {})]);
+                          }
+                        }
+                      }
+                    : () => qchatSheet(c, [
                         (
-                          tr(c, 'logout'),
+                          tr(c, 'openChat'),
+                          () => c.push('/chat/${item['conversationId']}'),
+                        ),
+                        if (item['mediaId'] != null)
+                          (
+                            tr(c, 'file'),
+                            () => c.push('/media/${item['mediaId']}'),
+                          ),
+                        (
+                          tr(c, 'removeFavorite'),
                           () async {
-                            await ref
-                                .read(clientProvider)
-                                .dio
-                                .delete('/auth/sessions/${item['id']}');
-                            if (mounted) setState(load);
+                            try {
+                              await ref
+                                  .read(clientProvider)
+                                  .dio
+                                  .patch(
+                                    '/messages/${item['id']}/favorite',
+                                    data: {'favorite': false},
+                                  );
+                              if (mounted) setState(load);
+                            } catch (_) {
+                              if (c.mounted) {
+                                qchatSheet(c, [(tr(c, 'networkError'), () {})]);
+                              }
+                            }
                           },
                         ),
-                      ])
-                    : null,
+                      ]),
               ),
           ],
         );

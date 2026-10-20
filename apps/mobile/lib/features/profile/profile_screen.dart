@@ -43,17 +43,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final client = ref.read(clientProvider);
       final id = await uploadMedia(client, file);
       await client.post('/users/me/avatar', {'mediaId': id});
-      if (mounted)
+      if (mounted) {
         setState(() => profile = client.get('/users/me', cached: false));
+      }
       client.changes.add(null);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = tr(
             context,
             e is StateError ? e.message.toString() : 'networkError',
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => uploading = false);
     }
@@ -242,15 +244,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             .read(clientProvider)
                             .dio
                             .patch('/users/me', data: {'gender': value});
-                        if (mounted)
+                        if (mounted) {
                           setState(
                             () => profile = ref
                                 .read(clientProvider)
                                 .get('/users/me', cached: false),
                           );
+                        }
                       } catch (_) {
-                        if (mounted)
+                        if (mounted) {
                           setState(() => error = tr(context, 'networkError'));
+                        }
                       }
                     },
                   ),

@@ -234,8 +234,9 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                                         );
                                         if (value == null ||
                                             value.isEmpty ||
-                                            !mounted)
+                                            !mounted) {
                                           return;
+                                        }
                                         try {
                                           await ref.read(clientProvider).post(
                                             '/moments/${p['id']}/comments',
@@ -243,13 +244,14 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                                           );
                                           if (mounted) setState(load);
                                         } catch (_) {
-                                          if (mounted)
+                                          if (mounted) {
                                             setState(
                                               () => error = tr(
                                                 context,
                                                 'networkError',
                                               ),
                                             );
+                                          }
                                         }
                                       },
                                     ),
@@ -264,8 +266,9 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                                                 tr(c, 'delete'),
                                                 tr(c, 'deleteMoment'),
                                               ) ||
-                                              !mounted)
+                                              !mounted) {
                                             return;
+                                          }
                                           try {
                                             await ref
                                                 .read(clientProvider)
@@ -273,13 +276,14 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                                                 .delete('/moments/${p['id']}');
                                             if (mounted) setState(load);
                                           } catch (_) {
-                                            if (mounted)
+                                            if (mounted) {
                                               setState(
                                                 () => error = tr(
                                                   context,
                                                   'networkError',
                                                 ),
                                               );
+                                            }
                                           }
                                         },
                                       ),

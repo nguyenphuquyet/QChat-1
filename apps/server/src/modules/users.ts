@@ -73,7 +73,7 @@ export async function usersRoute(
       return {
         profile: await db.user.findUnique({
           where: { id: userId },
-          select: { ...publicUser, email: true, createdAt: true },
+          select: { ...publicUser, email: true, createdAt: true, gender: true, region: true, phone: true, poke: true },
         }),
         messages: await db.message.findMany({
           where: { senderId: userId },

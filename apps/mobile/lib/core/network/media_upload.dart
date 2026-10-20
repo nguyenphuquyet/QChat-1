@@ -19,7 +19,9 @@ String? mediaMime(String? extension) => const {
 Future<String> uploadMedia(QChatClient client, PlatformFile file) async {
   final mime = mediaMime(file.extension);
   if (mime == null) throw StateError('unsupportedMedia');
-  if (file.size > maxMediaBytes) throw StateError('mediaTooLarge');
+  if ((await file.length() ?? 0) > maxMediaBytes) {
+    throw StateError('mediaTooLarge');
+  }
   final bytes = await file.readAsBytes();
   if (bytes.isEmpty || bytes.length > maxMediaBytes) {
     throw StateError('mediaTooLarge');

@@ -82,7 +82,10 @@ class _TextDialogState extends State<_TextDialog> {
         child: Text(tr(c, 'cancel')),
       ),
       TextButton(
-        onPressed: () => Navigator.pop(c, controller.text.trim()),
+        onPressed: () => Navigator.pop(
+          c,
+          widget.secret ? controller.text : controller.text.trim(),
+        ),
         child: Text(tr(c, 'save')),
       ),
     ],

@@ -15,6 +15,7 @@ class MomentComposer extends ConsumerStatefulWidget {
 class _MomentComposerState extends ConsumerState<MomentComposer> {
   final text = TextEditingController();
   final files = <PlatformFile>[];
+  final fileSizes = <PlatformFile, int>{};
   final uploaded = <PlatformFile, String>{};
   bool busy = false, picking = false, private = false;
   String? error;
@@ -35,19 +36,25 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
         allowedExtensions: video ? ['mp4', 'mov'] : imageExtensions,
       );
       if (!mounted) return;
-      if (selected.any((f) => f.size > maxMediaBytes))
-        throw StateError('mediaTooLarge');
-      if (files.length + selected.length > 9)
+      for (final file in selected) {
+        final size = await file.length() ?? 0;
+        if (size > maxMediaBytes) throw StateError('mediaTooLarge');
+        fileSizes[file] = size;
+      }
+      if (!mounted) return;
+      if (files.length + selected.length > 9) {
         throw StateError('maxAttachments');
+      }
       setState(() => files.addAll(selected));
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = tr(
             context,
             e is StateError ? e.message.toString() : 'networkError',
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => picking = false);
     }
@@ -71,13 +78,14 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
       });
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = tr(
             context,
             e is StateError ? e.message.toString() : 'networkError',
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -124,16 +132,18 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
           for (final file in files)
             QChatListTile(
               title: file.name,
-              subtitle: '${(file.size / 1024 / 1024).toStringAsFixed(1)} MB',
+              subtitle:
+                  '${((fileSizes[file] ?? 0) / 1024 / 1024).toStringAsFixed(1)} MB',
               trailing: QChatIconButton(
                 'close',
                 label: tr(c, 'delete'),
                 onTap: () {
-                  if (!busy)
+                  if (!busy) {
                     setState(() {
                       files.remove(file);
                       uploaded.remove(file);
                     });
+                  }
                 },
               ),
             ),

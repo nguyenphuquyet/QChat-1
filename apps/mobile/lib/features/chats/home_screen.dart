@@ -115,6 +115,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             .contains(search.text.toLowerCase()),
                   )
                   .toList();
+              if (index == 0) {
+                bool pinned(dynamic chat) => (chat['members'] as List).any(
+                  (m) =>
+                      m['userId'] == ref.read(clientProvider).userId &&
+                      m['pinned'] == true,
+                );
+                final ordered = [
+                  ...items.where(pinned),
+                  ...items.where((item) => !pinned(item)),
+                ];
+                items
+                  ..clear()
+                  ..addAll(ordered);
+              }
               return Column(
                 children: [
                   QChatSearchBar(

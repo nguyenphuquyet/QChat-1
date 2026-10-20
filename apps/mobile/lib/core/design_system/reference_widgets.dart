@@ -185,6 +185,6 @@ class FeatureScreen extends StatelessWidget {
       label: tr(c, 'back'),
       onTap: () => c.pop(),
     ),
-    child: QChatEmptyState(tr(c, 'notAvailable'), icon: 'settings'),
+    child: QChatEmptyState(tr(c, 'serviceLater'), icon: 'settings'),
   );
 }

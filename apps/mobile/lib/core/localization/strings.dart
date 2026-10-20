@@ -1,6 +1,87 @@
 import 'package:flutter/widgets.dart';
 
 const translations = <String, List<String>>{
+  'saved': ['Saved', 'Đã lưu', '已保存'],
+  'operationFailed': [
+    'Could not save. Check your input and connection, then retry.',
+    'Không lưu được. Kiểm tra thông tin và kết nối rồi thử lại.',
+    '无法保存，请检查输入和连接后重试。',
+  ],
+  'currentPassword': ['Current password', 'Mật khẩu hiện tại', '当前密码'],
+  'newPassword': [
+    'New password (12+ characters)',
+    'Mật khẩu mới (ít nhất 12 ký tự)',
+    '新密码（至少12字符）',
+  ],
+  'repeatPassword': ['Repeat new password', 'Nhập lại mật khẩu mới', '再次输入新密码'],
+  'passwordMismatch': [
+    'Passwords do not match.',
+    'Hai mật khẩu mới không khớp.',
+    '密码不一致。',
+  ],
+  'passwordMinimum': [
+    'Use at least 12 characters.',
+    'Mật khẩu cần ít nhất 12 ký tự.',
+    '密码至少12字符。',
+  ],
+  'changePassword': ['Change password', 'Đổi mật khẩu', '修改密码'],
+  'passwordLogoutNote': [
+    'Changing your password signs out all devices.',
+    'Đổi mật khẩu sẽ đăng xuất tất cả thiết bị.',
+    '修改密码将退出所有设备。',
+  ],
+  'exportData': ['Export my data', 'Xuất dữ liệu của tôi', '导出我的数据'],
+  'exportDataNote': [
+    'Export your profile and up to 1,000 of your messages and posts as JSON.',
+    'Xuất hồ sơ và tối đa 1.000 tin nhắn, bài đăng của bạn thành tệp JSON.',
+    '将个人资料及最多1000条消息和动态导出为JSON。',
+  ],
+  'devicePermissionsNote': [
+    'Camera, microphone and photo permissions are requested when used. Manage granted permissions in your device Settings.',
+    'Ứng dụng xin quyền camera, micro và ảnh khi bạn sử dụng. Bạn có thể quản lý quyền đã cấp trong Cài đặt của điện thoại.',
+    '使用时会请求相机、麦克风和照片权限。可在设备设置中管理授权。',
+  ],
+  'cachedContent': ['Cached content', 'Nội dung đã lưu trên máy', '缓存内容'],
+  'pendingMessages': ['Unsent messages', 'Tin nhắn đang chờ gửi', '待发送消息'],
+  'clearCache': ['Clear cache', 'Xóa bộ nhớ đệm', '清除缓存'],
+  'clearCacheNote': [
+    'Removes downloaded data from this device. Your account, server messages and unsent messages are kept.',
+    'Xóa dữ liệu đã tải trên thiết bị này. Giữ nguyên tài khoản, tin nhắn trên máy chủ và tin nhắn đang chờ gửi.',
+    '清除本机缓存，保留账号、服务器消息和待发送消息。',
+  ],
+  'muteOnJoin': [
+    'Start calls with microphone muted',
+    'Tắt micro khi bắt đầu cuộc gọi',
+    '通话开始时麦克风静音',
+  ],
+  'callPermissionNote': [
+    'Microphone and camera permissions are requested when you start a call.',
+    'Quyền micro và camera được yêu cầu khi bạn bắt đầu cuộc gọi.',
+    '开始通话时会请求麦克风和相机权限。',
+  ],
+  'callHistory': ['Call history', 'Lịch sử cuộc gọi', '通话记录'],
+  'enabled': ['On', 'Bật', '开启'],
+  'disabled': ['Off', 'Tắt', '关闭'],
+  'blocks': ['Blocked accounts', 'Tài khoản đã chặn', '已屏蔽账号'],
+  'unblock': ['Unblock', 'Bỏ chặn', '取消屏蔽'],
+  'unblockNote': [
+    'Allow this account to contact you again?',
+    'Cho phép tài khoản này liên hệ lại với bạn?',
+    '允许此账号再次联系你？',
+  ],
+  'openChat': ['Open chat', 'Mở cuộc trò chuyện', '打开聊天'],
+  'removeFavorite': ['Remove from favorites', 'Bỏ khỏi mục yêu thích', '取消收藏'],
+  'currentSession': ['This device', 'Thiết bị này', '此设备'],
+  'revokeSession': [
+    'Sign this device out?',
+    'Đăng xuất thiết bị này?',
+    '退出此设备？',
+  ],
+  'serviceLater': [
+    'This separate service will be added later.',
+    'Dịch vụ riêng này sẽ được bổ sung sau.',
+    '此独立服务将在以后添加。',
+  ],
   'confirm': ['Confirm', 'Xác nhận', '确认'],
   'mediaTooLarge': [
     'Each file must be 25 MB or smaller.',
@@ -29,7 +110,7 @@ const translations = <String, List<String>>{
   ],
   'play': ['Play', 'Phát', '播放'],
   'pause': ['Pause', 'Tạm dừng', '暂停'],
-  'video': ['Video', 'Video', '视频'],
+
   'private': ['Only me', 'Chỉ mình tôi', '仅自己'],
   'comment': ['Comment', 'Bình luận', '评论'],
   'deleteMoment': [

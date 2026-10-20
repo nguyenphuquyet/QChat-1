@@ -96,4 +96,20 @@ class LocalDatabase extends GeneratedDatabase {
     await customStatement('DELETE FROM cache');
     await customStatement('DELETE FROM outbox');
   }
+
+  Future<void> clearReadCache() => customStatement('DELETE FROM cache');
+
+  Future<({int bytes, int entries, int pending})> cacheStats() async {
+    final cached = await customSelect(
+      'SELECT COALESCE(SUM(LENGTH(CAST(value AS BLOB))), 0) AS bytes, COUNT(*) AS entries FROM cache',
+    ).getSingle();
+    final queued = await customSelect(
+      'SELECT COUNT(*) AS count FROM outbox',
+    ).getSingle();
+    return (
+      bytes: cached.read<int>('bytes'),
+      entries: cached.read<int>('entries'),
+      pending: queued.read<int>('count'),
+    );
+  }
 }

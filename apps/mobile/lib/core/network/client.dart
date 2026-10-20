@@ -507,6 +507,10 @@ class QChatClient {
 
   Future<void> logout() async {
     await post('/auth/logout', {});
+    await clearSession();
+  }
+
+  Future<void> clearSession() async {
     stopping = true;
     _recovery?.cancel();
     _recovery = null;
