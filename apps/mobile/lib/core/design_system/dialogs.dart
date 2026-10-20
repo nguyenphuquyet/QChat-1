@@ -28,27 +28,28 @@ Future<bool> confirmAction(
   String title,
   String message,
 ) async =>
-    await TDialog.showPopupDialog<bool>(
-      context: context,
-      builder: (c) => TDialog(
-        title: Text(title),
-        content: Text(message),
-        buttons: [
-          TDialogButtonData(
-            title: Text(tr(c, 'cancel')),
-            action: (_) {
-              Navigator.pop(c, false);
-              return true;
-            },
-          ),
-          TDialogButtonData(
-            title: Text(tr(c, 'confirm')),
-            action: (_) {
-              Navigator.pop(c, true);
-              return true;
-            },
-          ),
-        ],
+    await TDialog.show<bool>(
+      context,
+      barrierDismissible: true,
+      barrierResult: false,
+      dialog: Builder(
+        builder: (c) => TDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TDialogAction(
+              child: Text(tr(c, 'cancel')),
+              result: false,
+              variant: TButtonVariant.text,
+            ),
+            TDialogAction(
+              child: Text(tr(c, 'confirm')),
+              result: true,
+              role: TDialogActionRole.primary,
+              variant: TButtonVariant.text,
+            ),
+          ],
+        ),
       ),
     ) ??
     false;
@@ -77,12 +78,10 @@ class _TextDialogState extends State<_TextDialog> {
   }
 
   @override
-  Widget build(BuildContext c) => Align(
-    alignment: Alignment.center,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Material(
-        type: MaterialType.transparency,
+  Widget build(BuildContext c) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: TDialog(
           title: Text(widget.title),
           content: TInput(
@@ -93,29 +92,26 @@ class _TextDialogState extends State<_TextDialog> {
             maxLines: widget.lines,
             hintText: '',
           ),
-          buttons: [
-            TDialogButtonData(
-              title: Text(tr(c, 'cancel')),
-              action: (_) {
-                Navigator.pop(c);
-                return true;
-              },
+          actions: [
+            TDialogAction(
+              child: Text(tr(c, 'cancel')),
+              onPressed: () => Navigator.pop(c),
+              closeOnPressed: false,
+              variant: TButtonVariant.text,
             ),
-            TDialogButtonData(
-              title: Text(tr(c, 'save')),
-              action: (_) {
-                Navigator.pop(
-                  c,
-                  widget.secret
-                      ? controller.text
-                      : controller.text.trim(),
-                );
-                return true;
-              },
+            TDialogAction(
+              child: Text(tr(c, 'save')),
+              onPressed: () => Navigator.pop(
+                c,
+                widget.secret ? controller.text : controller.text.trim(),
+              ),
+              closeOnPressed: false,
+              role: TDialogActionRole.primary,
+              variant: TButtonVariant.text,
             ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
