@@ -136,8 +136,9 @@ class _SettingsToolsState extends ConsumerState<SettingsTools> {
       child: FutureBuilder<dynamic>(
         future: data,
         builder: (c, s) {
-          if (s.hasError)
+          if (s.hasError) {
             return QChatError(error: s.error!, retry: () => setState(load));
+          }
           if (!s.hasData) return const QChatLoading();
           final client = ref.read(clientProvider);
           final widgets = <Widget>[];
