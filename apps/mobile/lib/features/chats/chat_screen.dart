@@ -47,7 +47,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     });
     scroll.addListener(() {
       if (scroll.hasClients &&
-          scroll.position.extentAfter < 20 &&
+          scroll.position.pixels < 20 &&
           messages.any((m) => (m['sequence'] as int? ?? 0) > readSequence)) {
         load();
       }
@@ -58,7 +58,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     });
     messageUpdates = ref.read(clientProvider).messageChanges.stream.listen((_) {
       if (!mounted) return;
-      final nearEnd = !scroll.hasClients || scroll.position.extentAfter < 100;
+      final nearEnd = !scroll.hasClients || scroll.position.pixels < 100;
       final previousCount = messages.length;
       setState(() {
         messages = ref
@@ -98,7 +98,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   @override
   void didChangeMetrics() {
     if (!mounted) return;
-    if (scroll.hasClients && scroll.position.extentAfter < 100) scrollToEnd();
+    if (scroll.hasClients && scroll.position.pixels < 100) scrollToEnd();
     settlePanels();
   }
 
@@ -117,7 +117,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void stickyState(VoidCallback change) {
-    final stick = !scroll.hasClients || scroll.position.extentAfter < 100;
+    final stick = !scroll.hasClients || scroll.position.pixels < 100;
     setState(change);
     if (stick) scrollToEnd();
   }
@@ -186,7 +186,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   void scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scroll.hasClients) scroll.jumpTo(scroll.position.maxScrollExtent);
+      if (scroll.hasClients) scroll.jumpTo(0);
     });
   }
 
@@ -198,7 +198,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     fetching = true;
     final nearEnd =
         !scroll.hasClients ||
-        scroll.position.maxScrollExtent - scroll.offset < 100;
+        scroll.offset < 100;
     try {
       final client = ref.read(clientProvider);
       final cached = await client.local?.read('messages:${widget.id}');
@@ -251,7 +251,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       }
       if (nearEnd) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (scroll.hasClients) scroll.jumpTo(scroll.position.maxScrollExtent);
+          if (scroll.hasClients) scroll.jumpTo(0);
         });
       }
     } catch (e) {
@@ -540,12 +540,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 : GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onTap: dismissInput,
+                    child: Align(
+                    alignment: Alignment.topCenter,
                     child: ListView.builder(
                     controller: scroll,
+                    // reverse: điểm bắt đầu là tin mới nhất -> mở chat không phải
+                    // cuộn từ trên xuống. Ít tin thì shrinkWrap + Align để vẫn
+                    // nằm sát phía trên như cũ.
+                    reverse: true,
+                    shrinkWrap: messages.length < 12,
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     itemCount: messages.length,
-                    itemBuilder: (c, i) {
+                    itemBuilder: (c, index) {
+                      final i = messages.length - 1 - index;
                       final m = messages[i],
                           mine =
                               m['senderId'] == ref.read(clientProvider).userId;
@@ -607,6 +615,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                         ],
                       );
                     },
+                  ),
                   ),
                   ),
           ),
