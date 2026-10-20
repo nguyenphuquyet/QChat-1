@@ -161,7 +161,9 @@ void main() {
     expect(find.byType(QChatBottomNavigation), findsOneWidget);
     expect(find.byType(QChatSearchBar), findsOneWidget);
     expect(find.byType(QChatError), findsNothing);
-    expect(find.byType(TextButton), findsOneWidget);
+    // Banner retry button removed – offline state is now shown silently via
+    // the header title change ("Đã ngắt kết nối") instead of a Material banner.
+    expect(find.byType(TextButton), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
