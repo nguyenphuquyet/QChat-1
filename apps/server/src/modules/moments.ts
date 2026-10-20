@@ -71,7 +71,7 @@ export async function momentsRoute(
           comments: {
             take: 30,
             orderBy: { createdAt: "asc" },
-            include: { author: { select: publicUser } },
+            include: { user: { select: publicUser } },
           },
         },
         orderBy: { createdAt: "desc" },

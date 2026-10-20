@@ -56,12 +56,13 @@ class FakeClient extends QChatClient {
     calls.add(path);
     if (path == '/users/peer') return peer;
     if (path.startsWith('/users/search')) return [peer];
-    if (path == '/friends')
+    if (path == '/friends') {
       return isFriend
           ? [
               {'friendId': 'peer', 'friend': peer},
             ]
           : [];
+    }
     if (path == '/conversations') return [conversation];
     if (path == '/conversations/chat') return conversation;
     if (path.contains('/messages?')) return rows;
@@ -170,12 +171,12 @@ void main() {
     await mount(tester, FakeClient(), const ChatScreen(id: 'chat'));
     await tester.longPress(find.text('Xin chào'));
     await tester.pumpAndSettle();
-    expect(find.byType(TPopoverWidget), findsOneWidget);
+    expect(find.byType(TPopoverAnchor), findsOneWidget);
     expect(find.text('Chuyển tiếp'), findsOneWidget);
     expect(find.text('Trích dẫn'), findsOneWidget);
     await tester.tap(find.text('Chọn'));
     await tester.pumpAndSettle();
-    expect(find.byType(TPopoverWidget), findsNothing);
+    expect(find.byType(TPopoverAnchor), findsNothing);
     expect(find.text('Hủy'), findsWidgets);
     expect(tester.takeException(), isNull);
   });

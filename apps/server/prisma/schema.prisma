@@ -33,6 +33,7 @@ model User {
   blocks BlockedUser[] @relation("blockOwner")
   blockedBy BlockedUser[] @relation("blockTarget")
   moments Moment[]
+  momentComments MomentComment[]
   media Media[]
   tokens AccountToken[]
   devices PushDevice[]
@@ -184,6 +185,7 @@ model MomentComment {
   momentId String @db.Uuid
   userId String @db.Uuid
   moment Moment @relation(fields:[momentId],references:[id],onDelete:Cascade)
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
   text String
   createdAt DateTime @default(now())
   @@index([momentId,createdAt])
