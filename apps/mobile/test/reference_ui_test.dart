@@ -175,9 +175,7 @@ void main() {
     await snapshot('add-friend');
     await mount(const ChatScreen(id: 'chat'));
     await snapshot('conversation');
-    await tester.tap(
-      find.byWidgetPredicate((w) => w is QChatIconButton && w.icon == 'plus'),
-    );
+    await tester.tap(find.byKey(const ValueKey('chat-plus')));
     await tester.pumpAndSettle();
     expect(find.text('Vị trí'), findsOneWidget);
     expect(find.text('Thẻ liên hệ'), findsOneWidget);

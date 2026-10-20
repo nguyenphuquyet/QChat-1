@@ -92,6 +92,7 @@ class ChatInputBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           _ComposerIcon(
+            key: const ValueKey('chat-voice'),
             glyph: voice ? _Glyph.keyboard : _Glyph.voice,
             label: voiceLabel,
             onTap: onVoice,
@@ -100,7 +101,12 @@ class ChatInputBar extends StatelessWidget {
           const SizedBox(width: 2),
           Expanded(child: field),
           const SizedBox(width: 4),
-          _ComposerIcon(glyph: _Glyph.emoji, label: emojiLabel, onTap: onEmoji),
+          _ComposerIcon(
+            key: const ValueKey('chat-emoji'),
+            glyph: _Glyph.emoji,
+            label: emojiLabel,
+            onTap: onEmoji,
+          ),
           if (hasText && !voice)
             Padding(
               padding: const EdgeInsets.only(left: 2),
@@ -132,7 +138,12 @@ class ChatInputBar extends StatelessWidget {
               ),
             )
           else
-            _ComposerIcon(glyph: _Glyph.plus, label: plusLabel, onTap: onPlus),
+            _ComposerIcon(
+              key: const ValueKey('chat-plus'),
+              glyph: _Glyph.plus,
+              label: plusLabel,
+              onTap: onPlus,
+            ),
         ],
       ),
     );
@@ -143,6 +154,7 @@ enum _Glyph { voice, keyboard, emoji, plus }
 
 class _ComposerIcon extends StatelessWidget {
   const _ComposerIcon({
+    super.key,
     required this.glyph,
     required this.label,
     required this.onTap,
