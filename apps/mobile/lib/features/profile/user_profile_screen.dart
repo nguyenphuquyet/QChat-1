@@ -79,7 +79,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     });
     try {
       final client = ref.read(clientProvider);
-      if (action == 'addFriend') {
+      if (action == 'add' || action == 'addFriend') {
         await client.post('/friends/requests', {'recipientId': user!['id']});
         if (mounted) setState(() => sent = true);
       } else {
@@ -177,7 +177,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               action('videoCall', 'videoCall'),
             ] else
               action(
-                sent ? 'friendRequestSent' : 'addFriend',
+                sent ? 'friendRequestSent' : 'add',
                 'contacts',
                 disabled: sent,
               ),

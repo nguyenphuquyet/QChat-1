@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
+import 'package:tdesign_flutter/src/components/popover/t_popover_widget.dart'; // ignore: implementation_imports
 import 'package:qchat/app/providers.dart';
 import 'package:qchat/core/design_system/components.dart';
 import 'package:qchat/core/design_system/media_widgets.dart';
@@ -171,12 +172,12 @@ void main() {
     await mount(tester, FakeClient(), const ChatScreen(id: 'chat'));
     await tester.longPress(find.text('Xin chào'));
     await tester.pumpAndSettle();
-    expect(find.byType(TPopoverAnchor), findsOneWidget);
+    expect(find.byType(TPopoverWidget), findsOneWidget);
     expect(find.text('Chuyển tiếp'), findsOneWidget);
     expect(find.text('Trích dẫn'), findsOneWidget);
     await tester.tap(find.text('Chọn'));
     await tester.pumpAndSettle();
-    expect(find.byType(TPopoverAnchor), findsNothing);
+    expect(find.byType(TPopoverWidget), findsNothing);
     expect(find.text('Hủy'), findsWidgets);
     expect(tester.takeException(), isNull);
   });

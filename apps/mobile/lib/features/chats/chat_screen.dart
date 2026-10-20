@@ -604,24 +604,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             SizedBox(
               width: (MediaQuery.sizeOf(c).width.clamp(0, 430) - 48) / 4,
               height: 78,
-              child: TButton(
-                variant: TButtonVariant.text,
-                style: const ButtonStyle(
-                  padding: WidgetStatePropertyAll(EdgeInsets.all(4)),
-                  foregroundColor: WidgetStatePropertyAll(Colors.white),
-                ),
-                onPressed: () {
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
                   TPopoverController.maybeOf(c)?.close();
                   a.$3();
                 },
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    TIcon(a.$2, size: 23, color: Colors.white),
-                    const SizedBox(height: 6),
+                    TIcon(a.$2, size: 22, color: Colors.white),
+                    const SizedBox(height: 4),
                     Text(
                       tr(c, a.$1),
                       textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12, color: Colors.white),
                     ),
                   ],
@@ -838,37 +837,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           ),
           if (selecting)
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                TButton(
-                  variant: TButtonVariant.text,
-                  onPressed: selected.isEmpty
-                      ? null
-                      : () => forward(
-                          messages
-                              .where((m) => selected.contains(m['id']))
-                              .toList(),
-                        ),
-                  child: Text(tr(c, 'forward')),
+                Expanded(
+                  child: TButton(
+                    variant: TButtonVariant.text,
+                    onPressed: selected.isEmpty
+                        ? null
+                        : () => forward(
+                            messages
+                                .where((m) => selected.contains(m['id']))
+                                .toList(),
+                          ),
+                    child: Text(tr(c, 'forward')),
+                  ),
                 ),
-                TButton(
-                  variant: TButtonVariant.text,
-                  onPressed: selected.isEmpty
-                      ? null
-                      : () => deleteMessages(
-                          messages
-                              .where((m) => selected.contains(m['id']))
-                              .toList(),
-                        ),
-                  child: Text(tr(c, 'delete')),
+                Expanded(
+                  child: TButton(
+                    variant: TButtonVariant.text,
+                    onPressed: selected.isEmpty
+                        ? null
+                        : () => deleteMessages(
+                            messages
+                                .where((m) => selected.contains(m['id']))
+                                .toList(),
+                          ),
+                    child: Text(tr(c, 'delete')),
+                  ),
                 ),
-                TButton(
-                  variant: TButtonVariant.text,
-                  onPressed: () => setState(() {
-                    selecting = false;
-                    selected.clear();
-                  }),
-                  child: Text(tr(c, 'cancel')),
+                Expanded(
+                  child: TButton(
+                    variant: TButtonVariant.text,
+                    onPressed: () => setState(() {
+                      selecting = false;
+                      selected.clear();
+                    }),
+                    child: Text(tr(c, 'cancel')),
+                  ),
                 ),
               ],
             ),

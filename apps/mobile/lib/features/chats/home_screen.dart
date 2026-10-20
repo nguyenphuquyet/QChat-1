@@ -184,8 +184,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   );
   Widget conversation(BuildContext c, Map item) {
     final rows = item['messages'] as List;
-    final member = (item['members'] as List).firstWhere(
+    final members = (item['members'] as List).cast<dynamic>();
+    final member = members.firstWhere(
       (m) => m['userId'] == ref.read(clientProvider).userId,
+      orElse: () => null,
     );
     final last = rows.isEmpty ? null : rows.first;
     final date = DateTime.tryParse(last?['createdAt'] ?? '')?.toLocal();
@@ -205,11 +207,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             backgroundColor: const Color(0xff168fe5),
             label: tr(
               c,
-              member['markedUnread'] == true ? 'markRead' : 'markUnread',
+              member?['markedUnread'] == true ? 'markRead' : 'markUnread',
             ),
             onPressed: (_) => conversationAction(
               item,
-              member['markedUnread'] == true ? 'read' : 'unread',
+              member?['markedUnread'] == true ? 'read' : 'unread',
             ),
           ),
           TSwipeCellAction(
@@ -228,10 +230,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         name: conversationName(item),
         avatar: item['kind'] == 'DIRECT'
             ? UserAvatar(
-                (item['members'] as List).firstWhere(
+                members.firstWhere(
                   (m) => m['userId'] != ref.read(clientProvider).userId,
                   orElse: () => member,
-                )['user'],
+                )?['user'],
               )
             : null,
         preview: last == null
@@ -242,9 +244,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ? last['text']
             : '[${last['kind']}]',
         time: time,
-        unread: member['markedUnread'] == true
+        unread: member?['markedUnread'] == true
             ? 1
-            : ((item['sequence'] as int) - (member['readSequence'] as int))
+            : ((item['sequence'] as int) -
+                    ((member?['readSequence'] as int?) ?? 0))
                   .clamp(0, 999),
         onTap: () => c.push('/chat/${item['id']}'),
       ),
