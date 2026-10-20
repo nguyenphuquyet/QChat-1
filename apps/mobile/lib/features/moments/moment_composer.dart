@@ -95,6 +95,7 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
   void _pickPrivacy() {
     TActionSheet.showList<bool>(
       context,
+      showCancel: false,
       items: [
         TActionSheetItem(value: false, label: tr(context, 'friends')),
         TActionSheetItem(value: true, label: tr(context, 'private')),
