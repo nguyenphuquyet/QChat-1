@@ -104,7 +104,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (index == 3) {
                 return me(c, s.data as Map? ?? {'nickname': '', 'qchatId': ''});
               }
-              final items = (s.data as List? ?? [])
+              var items = (s.data as List? ?? [])
                   .where(
                     (item) =>
                         (index == 0
@@ -125,9 +125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ...items.where(pinned),
                   ...items.where((item) => !pinned(item)),
                 ];
-                items
-                  ..clear()
-                  ..addAll(ordered);
+                items = ordered;
               }
               return Column(
                 children: [
