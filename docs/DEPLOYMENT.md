@@ -1,5 +1,48 @@
 # Self-hosting
 
+## Bật/tắt QChat trên VPS
+
+Sau khi SSH vào VPS, chạy `cd /opt/qchat` trước các lệnh dưới đây.
+Các lệnh chỉ quản lý stack QChat, không tắt Nginx Proxy Manager hoặc các app khác.
+
+```sh
+cd /opt/qchat
+
+# Bật QChat bằng image đã build
+docker compose --env-file .env -f infra/compose.vps.yaml up -d --no-build
+
+# Tắt QChat, giữ nguyên container và dữ liệu
+docker compose --env-file .env -f infra/compose.vps.yaml stop
+
+# Khởi động lại riêng API và realtime
+docker compose --env-file .env -f infra/compose.vps.yaml restart server realtime
+
+# Xem trạng thái
+docker compose --env-file .env -f infra/compose.vps.yaml ps -a
+
+# Xem log trực tiếp; Ctrl+C chỉ thoát xem log, không tắt server
+docker compose --env-file .env -f infra/compose.vps.yaml logs --tail=100 -f server realtime
+
+# Kiểm tra API qua HTTPS
+curl --fail https://chat.nguyenphuquyet.online/api/health
+```
+
+`server`, `realtime`, `postgres`, `redis`, `storage`, `gateway` là các dịch vụ
+chạy thường trực. `migrate` và `storage-init` hiện `Exited (0)` sau khi hoàn thành
+là bình thường. Khi tắt QChat, domain có thể trả lỗi 502 qua proxy.
+
+Không dùng `down -v`: tùy chọn `-v` xóa các volume chứa database và file.
+`restart` không nạp lại thay đổi trong `.env`. Sau khi sửa biến môi trường của
+API/realtime, dùng:
+
+```sh
+docker compose --env-file .env -f infra/compose.vps.yaml up -d --no-build --no-deps --force-recreate server realtime
+```
+
+Lệnh trên không đổi mật khẩu PostgreSQL hay thông tin kho file đã khởi tạo;
+việc đổi các thông tin đó cần quy trình riêng. Thay đổi mã nguồn cần build image
+mới theo hướng dẫn cập nhật bên dưới.
+
 ## VPS behind Nginx Proxy Manager
 
 The VPS deployment uses `/opt/qchat`, `infra/compose.vps.yaml` and a private

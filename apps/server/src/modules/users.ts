@@ -94,6 +94,10 @@ export async function usersRoute(
           emailVerified: true,
           allowRequests: true,
           previewPush: true,
+          gender: true,
+          region: true,
+          phone: true,
+          poke: true,
         },
       });
     if (!sub && method === "PATCH") {
@@ -101,6 +105,10 @@ export async function usersRoute(
         .object({
           nickname: z.string().trim().min(1).max(64).optional(),
           bio: z.string().max(300).optional(),
+          gender: z.enum(["", "male", "female", "other"]).optional(),
+          region: z.string().trim().max(100).optional(),
+          phone: z.string().trim().max(30).regex(/^[+\d ()-]*$/).optional(),
+          poke: z.string().trim().max(100).optional(),
           allowRequests: z.boolean().optional(),
           previewPush: z.boolean().optional(),
         })

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
 import '../../core/design_system/reference_widgets.dart';
+import '../../core/design_system/media_widgets.dart';
 import '../../core/localization/strings.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -243,7 +244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   title: (item['remark'] ?? '').toString().isEmpty
                       ? item['friend']['nickname']
                       : item['remark'],
-                  leading: QChatAvatar(item['friend']['nickname'], size: 42),
+                  leading: UserAvatar(item['friend'], size: 42),
                   trailing: const SizedBox.shrink(),
                   onTap: () async {
                     try {
@@ -345,7 +346,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              QChatAvatar(u['nickname'], size: 64),
+              UserAvatar(u, size: 64),
               const SizedBox(width: 20),
               Expanded(
                 child: Column(

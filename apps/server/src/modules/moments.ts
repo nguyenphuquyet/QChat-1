@@ -66,7 +66,7 @@ export async function momentsRoute(
         },
         include: {
           author: { select: publicUser },
-          media: true,
+          media: { include: { media: { select: { mime: true, name: true } } } },
           likes: true,
           comments: { take: 30, orderBy: { createdAt: "asc" } },
         },
@@ -87,7 +87,8 @@ export async function momentsRoute(
       const ids = [...new Set(v.mediaIds)];
       requireCondition(
         (await db.media.count({
-          where: { id: { in: ids }, ownerId: userId, status: "READY" },
+          where: { id: { in: ids }, ownerId: userId, status: "READY",
+            OR: [{ mime: { startsWith: "image/" } }, { mime: { startsWith: "video/" } }] },
         })) === ids.length,
         400,
         "INVALID_MEDIA",

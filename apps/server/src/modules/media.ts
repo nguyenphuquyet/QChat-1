@@ -30,6 +30,7 @@ const types = [
   "image/gif",
   "image/webp",
   "video/mp4",
+  "video/quicktime",
   "audio/mp4",
   "audio/mpeg",
   "application/pdf",
@@ -51,6 +52,7 @@ export function validSignature(mime: string, bytes: Uint8Array) {
         b.toString("ascii", 8, 12) === "WEBP"
       );
     case "video/mp4":
+    case "video/quicktime":
     case "audio/mp4":
       return b.toString("ascii", 4, 8) === "ftyp";
     case "audio/mpeg":
@@ -163,6 +165,11 @@ export async function mediaRoute(
     requireCondition(file && file.status === "READY", 404, "NOT_FOUND");
     let allowed = file.ownerId === userId;
     if (!allowed)
+      allowed = !!(await db.user.findFirst({
+        where: { avatarId: file.id, disabled: false },
+        select: { id: true },
+      }));
+    if (!allowed)
       allowed = !!(await db.conversationMember.findFirst({
         where: {
           userId,
@@ -183,6 +190,9 @@ export async function mediaRoute(
       }
     requireCondition(allowed);
     return {
+      mime: file.mime,
+      name: file.name,
+      size: file.size,
       url: await getSignedUrl(
         storage(),
         new GetObjectCommand({

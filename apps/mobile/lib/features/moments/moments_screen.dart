@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
 import '../../core/localization/strings.dart';
+import '../../core/design_system/media_widgets.dart';
+import '../../core/design_system/dialogs.dart';
+import 'moment_composer.dart';
 
 class MomentsScreen extends ConsumerStatefulWidget {
   const MomentsScreen({super.key});
@@ -15,8 +18,7 @@ class MomentsScreen extends ConsumerStatefulWidget {
 class _MomentsScreenState extends ConsumerState<MomentsScreen> {
   late Future<dynamic> feed;
   StreamSubscription<void>? updates;
-  final text = TextEditingController();
-  bool composing = false, busy = false;
+
   String? error;
   @override
   void initState() {
@@ -28,35 +30,14 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
   }
 
   void load() {
-    feed = ref.read(clientProvider).get('/moments');
+    feed = ref.read(clientProvider).get('/moments', cached: false);
   }
 
   @override
   void dispose() {
     updates?.cancel();
-    text.dispose();
-    super.dispose();
-  }
 
-  Future<void> post() async {
-    setState(() => busy = true);
-    try {
-      await ref.read(clientProvider).post('/moments', {
-        'text': text.text,
-        'privacy': 'FRIENDS',
-      });
-      text.clear();
-      if (mounted) {
-        setState(() {
-          composing = false;
-          load();
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => error = tr(context, 'networkError'));
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
+    super.dispose();
   }
 
   @override
@@ -70,28 +51,15 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
     trailing: QChatIconButton(
       'plus',
       label: tr(c, 'post'),
-      onTap: () => setState(() => composing = !composing),
+      onTap: () async {
+        final posted = await Navigator.of(
+          c,
+        ).push<bool>(MaterialPageRoute(builder: (_) => const MomentComposer()));
+        if (posted == true && mounted) setState(load);
+      },
     ),
     child: Column(
       children: [
-        if (composing)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                QChatTextInput(
-                  controller: text,
-                  hint: tr(c, 'writeMoment'),
-                  lines: 4,
-                ),
-                const SizedBox(height: 8),
-                QChatButton(
-                  tr(c, busy ? 'loading' : 'post'),
-                  onTap: busy ? null : post,
-                ),
-              ],
-            ),
-          ),
         if (error != null)
           Text(error!, style: const TextStyle(color: QChatColors.danger)),
         Expanded(
@@ -102,6 +70,7 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                 return QChatError(error: s.error!, retry: () => setState(load));
               }
               final posts = s.data as List? ?? [];
+              if (!s.hasData && !s.hasError) return const QChatLoading();
               return ListView(
                 children: [
                   Container(
@@ -130,7 +99,7 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          QChatAvatar(p['author']['nickname'], size: 40),
+                          UserAvatar(p['author'], size: 40),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -146,13 +115,56 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                                 const SizedBox(height: 6),
                                 Text(p['text']),
                                 const SizedBox(height: 12),
-                                for (final media in p['media'])
-                                  QChatListTile(
-                                    title: tr(c, 'image'),
-                                    onTap: () => context.push(
-                                      '/media/${media['mediaId']}',
-                                    ),
-                                  ),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    for (final media in p['media'])
+                                      GestureDetector(
+                                        onTap: () => context.push(
+                                          '/media/${media['mediaId']}',
+                                        ),
+                                        child: SizedBox(
+                                          width: 120,
+                                          height: 120,
+                                          child:
+                                              (media['media']?['mime']
+                                                          as String? ??
+                                                      '')
+                                                  .startsWith('video/')
+                                              ? ColoredBox(
+                                                  color: const Color(
+                                                    0xff252525,
+                                                  ),
+                                                  child: Center(
+                                                    child: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        const QChatIcon(
+                                                          'videoCall',
+                                                          color: Colors.white,
+                                                          size: 36,
+                                                        ),
+                                                        Text(
+                                                          tr(c, 'play'),
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                )
+                                              : MediaImage(
+                                                  id: media['mediaId'],
+                                                ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                                 Row(
                                   children: [
                                     Text(
@@ -171,12 +183,29 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                                       secondary: true,
                                       onTap: () async {
                                         try {
-                                          await ref
-                                              .read(clientProvider)
-                                              .post(
-                                                '/moments/${p['id']}/likes',
-                                                {},
+                                          final liked = (p['likes'] as List)
+                                              .any(
+                                                (l) =>
+                                                    l['userId'] ==
+                                                    ref
+                                                        .read(clientProvider)
+                                                        .userId,
                                               );
+                                          if (liked) {
+                                            await ref
+                                                .read(clientProvider)
+                                                .dio
+                                                .delete(
+                                                  '/moments/${p['id']}/likes',
+                                                );
+                                          } else {
+                                            await ref
+                                                .read(clientProvider)
+                                                .post(
+                                                  '/moments/${p['id']}/likes',
+                                                  {},
+                                                );
+                                          }
                                           if (mounted) setState(load);
                                         } catch (e) {
                                           if (mounted) {
@@ -188,6 +217,72 @@ class _MomentsScreenState extends ConsumerState<MomentsScreen> {
                                         }
                                       },
                                     ),
+                                  ],
+                                ),
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    QChatButton(
+                                      tr(c, 'comment'),
+                                      secondary: true,
+                                      onTap: () async {
+                                        final value = await editText(
+                                          c,
+                                          tr(c, 'comment'),
+                                          maxLength: 1000,
+                                          lines: 3,
+                                        );
+                                        if (value == null ||
+                                            value.isEmpty ||
+                                            !mounted)
+                                          return;
+                                        try {
+                                          await ref.read(clientProvider).post(
+                                            '/moments/${p['id']}/comments',
+                                            {'text': value},
+                                          );
+                                          if (mounted) setState(load);
+                                        } catch (_) {
+                                          if (mounted)
+                                            setState(
+                                              () => error = tr(
+                                                context,
+                                                'networkError',
+                                              ),
+                                            );
+                                        }
+                                      },
+                                    ),
+                                    if (p['authorId'] ==
+                                        ref.read(clientProvider).userId)
+                                      QChatButton(
+                                        tr(c, 'delete'),
+                                        secondary: true,
+                                        onTap: () async {
+                                          if (!await confirmAction(
+                                                c,
+                                                tr(c, 'delete'),
+                                                tr(c, 'deleteMoment'),
+                                              ) ||
+                                              !mounted)
+                                            return;
+                                          try {
+                                            await ref
+                                                .read(clientProvider)
+                                                .dio
+                                                .delete('/moments/${p['id']}');
+                                            if (mounted) setState(load);
+                                          } catch (_) {
+                                            if (mounted)
+                                              setState(
+                                                () => error = tr(
+                                                  context,
+                                                  'networkError',
+                                                ),
+                                              );
+                                          }
+                                        },
+                                      ),
                                   ],
                                 ),
                                 for (final comment in p['comments'])

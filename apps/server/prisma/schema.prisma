@@ -12,6 +12,10 @@ model User {
   passwordHash String
   nickname String
   bio String @default("")
+  gender String @default("")
+  region String @default("")
+  phone String @default("")
+  poke String @default("")
   avatarId String? @db.Uuid
   emailVerified Boolean @default(false)
   disabled Boolean @default(false)

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:tdesign_flutter/tdesign_flutter.dart';
@@ -9,6 +11,8 @@ import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
 import '../../core/localization/strings.dart';
 import '../../core/design_system/reference_widgets.dart';
+import '../../core/design_system/media_widgets.dart';
+import '../../core/network/media_upload.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.qr = false});
@@ -23,6 +27,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   StreamSubscription<void>? updates;
   bool initialized = false;
   String? error;
+  bool uploading = false;
+  Future<void> avatar() async {
+    if (uploading) return;
+    setState(() {
+      uploading = true;
+      error = null;
+    });
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: imageExtensions,
+      );
+      if (file == null || !mounted) return;
+      final client = ref.read(clientProvider);
+      final id = await uploadMedia(client, file);
+      await client.post('/users/me/avatar', {'mediaId': id});
+      if (mounted)
+        setState(() => profile = client.get('/users/me', cached: false));
+      client.changes.add(null);
+    } catch (e) {
+      if (mounted)
+        setState(
+          () => error = tr(
+            context,
+            e is StateError ? e.message.toString() : 'networkError',
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => uploading = false);
+    }
+  }
+
   Future<void> edit(String field, String label, String initial) async {
     final controller = TextEditingController(text: initial);
     bool saving = false;
@@ -54,7 +90,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         setState(
                           () => profile = ref
                               .read(clientProvider)
-                              .get('/users/me'),
+                              .get('/users/me', cached: false),
                         );
                       }
                     } catch (_) {
@@ -144,7 +180,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                QChatAvatar(u['nickname'], size: 64),
+                UserAvatar(u, size: 64),
                 const SizedBox(height: 16),
                 Text(u['nickname']),
                 const SizedBox(height: 24),
@@ -160,12 +196,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         }
         return ListView(
           children: [
+            if (uploading) const QChatLoading(),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  error!,
+                  style: const TextStyle(color: QChatColors.danger),
+                ),
+              ),
             MenuRow(
               'avatar',
+              onTap: avatar,
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  QChatAvatar(u['nickname'], size: 34),
+                  UserAvatar(u, size: 34),
                   const SizedBox(width: 9),
                   const QChatIcon(
                     'chevron',
@@ -180,10 +226,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               value: u['nickname'],
               onTap: () => edit('nickname', 'name', u['nickname']),
             ),
-            MenuRow('gender', value: tr(c, 'notSet')),
-            const MenuRow('region'),
-            MenuRow('phone', value: tr(c, 'notSet')),
-            MenuRow('ID', value: u['qchatId'], onTap: () => c.push('/qr')),
+            MenuRow(
+              'gender',
+              value: tr(
+                c,
+                (u['gender'] as String? ?? '').isEmpty ? 'notSet' : u['gender'],
+              ),
+              onTap: () => qchatSheet(c, [
+                for (final value in ['male', 'female', 'other'])
+                  (
+                    tr(c, value),
+                    () async {
+                      try {
+                        await ref
+                            .read(clientProvider)
+                            .dio
+                            .patch('/users/me', data: {'gender': value});
+                        if (mounted)
+                          setState(
+                            () => profile = ref
+                                .read(clientProvider)
+                                .get('/users/me', cached: false),
+                          );
+                      } catch (_) {
+                        if (mounted)
+                          setState(() => error = tr(context, 'networkError'));
+                      }
+                    },
+                  ),
+              ]),
+            ),
+            MenuRow(
+              'region',
+              value: u['region'] ?? '',
+              onTap: () => edit('region', 'region', u['region'] ?? ''),
+            ),
+            MenuRow(
+              'phone',
+              value: u['phone'] ?? '',
+              onTap: () => edit('phone', 'phone', u['phone'] ?? ''),
+            ),
+            MenuRow(
+              'ID',
+              value: u['qchatId'],
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: u['qchatId']));
+                if (c.mounted) qchatSheet(c, [(tr(c, 'copied'), () {})]);
+              },
+            ),
             MenuRow(
               'qr',
               trailing: const Row(
@@ -196,7 +286,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               onTap: () => c.push('/qr'),
             ),
-            const MenuRow('poke'),
+            MenuRow(
+              'poke',
+              value: u['poke'] ?? '',
+              onTap: () => edit('poke', 'poke', u['poke'] ?? ''),
+            ),
             MenuRow(
               'status',
               value: (u['bio'] ?? '').toString().isEmpty
@@ -205,7 +299,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onTap: () => edit('bio', 'status', u['bio'] ?? ''),
             ),
             sectionGap,
-            const MenuRow('ringtone'),
+            MenuRow('ringtone', onTap: () => c.push('/settings/calls')),
             sectionGap,
             const MenuRow('addresses'),
             const MenuRow('invoice'),

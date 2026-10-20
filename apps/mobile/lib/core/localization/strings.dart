@@ -1,6 +1,45 @@
 import 'package:flutter/widgets.dart';
 
 const translations = <String, List<String>>{
+  'confirm': ['Confirm', 'Xác nhận', '确认'],
+  'mediaTooLarge': [
+    'Each file must be 25 MB or smaller.',
+    'Mỗi tệp tối đa 25 MB.',
+    '每个文件最大25MB。',
+  ],
+  'maxAttachments': [
+    'Up to 9 attachments per post.',
+    'Mỗi bài tối đa 9 tệp đính kèm.',
+    '每篇最多9个附件。',
+  ],
+  'unsupportedMedia': [
+    'Unsupported file format.',
+    'Định dạng tệp chưa được hỗ trợ.',
+    '不支持此文件格式。',
+  ],
+  'mediaLimit': [
+    'Up to 9 photos/videos, 25 MB each. Video: MP4 or MOV.',
+    'Tối đa 9 ảnh/video, mỗi tệp 25 MB. Video: MP4 hoặc MOV.',
+    '最多9张照片或视频，每个25MB。视频：MP4或MOV。',
+  ],
+  'videoPlaybackError': [
+    'Cannot play this video. Try again or use MP4 (H.264).',
+    'Không phát được video. Hãy thử lại hoặc dùng MP4 (H.264).',
+    '无法播放视频，请重试或使用MP4（H.264）。',
+  ],
+  'play': ['Play', 'Phát', '播放'],
+  'pause': ['Pause', 'Tạm dừng', '暂停'],
+  'video': ['Video', 'Video', '视频'],
+  'private': ['Only me', 'Chỉ mình tôi', '仅自己'],
+  'comment': ['Comment', 'Bình luận', '评论'],
+  'deleteMoment': [
+    'Delete this post and its comments?',
+    'Xóa bài đăng này cùng bình luận?',
+    '删除此动态及评论？',
+  ],
+  'male': ['Male', 'Nam', '男'],
+  'female': ['Female', 'Nữ', '女'],
+  'other': ['Other', 'Khác', '其他'],
   'searchHint': [
     'Search contacts, chats and messages',
     'Tìm trong danh bạ, cuộc trò chuyện và tin nhắn',
