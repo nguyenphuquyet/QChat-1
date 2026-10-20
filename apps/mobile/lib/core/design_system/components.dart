@@ -63,40 +63,37 @@ class QChatPage extends StatelessWidget {
             ? Brightness.light
             : Brightness.dark,
       ),
-      child: SafeArea(
-        top: !edgeToEdge,
-        bottom: false,
-        child: ColoredBox(
-          color: pageColor,
-          child: Column(
-            children: [
-              if (title != null)
-                SafeArea(
-                  top: edgeToEdge,
-                  bottom: false,
-                  child: QChatAppBar(
-                    title: title!,
-                    leading: leading,
-                    trailing: trailing,
-                  ),
+      child: ColoredBox(
+        color: pageColor,
+        child: Column(
+          children: [
+            if (title != null)
+              SafeArea(
+                bottom: false,
+                child: QChatAppBar(
+                  title: title!,
+                  leading: leading,
+                  trailing: trailing,
                 ),
-              Expanded(
-                child: MediaQuery.removePadding(
-                  context: c,
-                  removeTop: !edgeToEdge || title != null,
-                  removeBottom: !edgeToEdge || bottom != null,
-                  removeLeft: true,
-                  removeRight: true,
-                  child: child,
-                ),
+              )
+            else if (!edgeToEdge)
+              SizedBox(height: MediaQuery.paddingOf(c).top),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: c,
+                removeTop: title != null || !edgeToEdge,
+                removeBottom: bottom != null,
+                removeLeft: true,
+                removeRight: true,
+                child: child,
               ),
-              if (bottom != null)
-                ColoredBox(
-                  color: navigationBackground ?? pageColor,
-                  child: SafeArea(top: false, child: bottom!),
-                ),
-            ],
-          ),
+            ),
+            if (bottom != null)
+              ColoredBox(
+                color: navigationBackground ?? pageColor,
+                child: SafeArea(top: false, child: bottom!),
+              ),
+          ],
         ),
       ),
     );
