@@ -238,3 +238,144 @@ class UserAvatar extends StatelessWidget {
     );
   }
 }
+
+class GroupAvatar extends StatelessWidget {
+  const GroupAvatar(
+    this.conversation, {
+    super.key,
+    this.size = 48,
+    this.customAvatarId,
+    this.onTap,
+  });
+
+  final Map conversation;
+  final double size;
+  final String? customAvatarId;
+  final VoidCallback? onTap;
+
+  String? getAvatarId() {
+    if (customAvatarId != null && customAvatarId!.isNotEmpty) {
+      return customAvatarId;
+    }
+    final rawAvatar = conversation['avatarId']?.toString();
+    if (rawAvatar != null && rawAvatar.isNotEmpty) return rawAvatar;
+    final ann = conversation['announcement']?.toString();
+    if (ann != null && ann.startsWith('{')) {
+      try {
+        final map = jsonDecode(ann);
+        if (map is Map && map['avatarId'] != null) {
+          return map['avatarId'].toString();
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext c) {
+    final avatarId = getAvatarId();
+    final borderRadius = BorderRadius.circular(size > 40 ? 6 : 4);
+
+    Widget content;
+    if (avatarId != null && avatarId.isNotEmpty) {
+      final fallback = QChatAvatar(
+        conversation['title']?.toString() ?? 'G',
+        size: size,
+      );
+      content = SizedBox.square(
+        dimension: size,
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: MediaImage(
+            id: avatarId,
+            placeholder: fallback,
+            errorWidget: fallback,
+          ),
+        ),
+      );
+    } else {
+      final members = (conversation['members'] as List? ?? [])
+          .where((m) => m is Map && m['user'] is Map)
+          .toList();
+
+      final sample = members.take(4).toList();
+      if (sample.isEmpty) {
+        content = QChatAvatar(
+          conversation['title']?.toString() ?? 'G',
+          size: size,
+        );
+      } else if (sample.length == 1) {
+        content = UserAvatar(sample.first['user'] as Map, size: size);
+      } else {
+        // 2x2 grid for up to 4 members
+        final gap = 1.5;
+        final cell = (size - 3 * gap) / 2;
+
+        content = Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Theme.of(c).brightness == Brightness.dark
+                ? const Color(0xff333333)
+                : const Color(0xffeaeaea),
+            borderRadius: borderRadius,
+          ),
+          padding: EdgeInsets.all(gap),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _cell(sample[0]['user'] as Map, cell),
+                  SizedBox(width: gap),
+                  _cell(sample[1]['user'] as Map, cell),
+                ],
+              ),
+              SizedBox(height: gap),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (sample.length >= 3)
+                    _cell(sample[2]['user'] as Map, cell)
+                  else
+                    SizedBox(width: cell, height: cell),
+                  SizedBox(width: gap),
+                  if (sample.length >= 4)
+                    _cell(sample[3]['user'] as Map, cell)
+                  else
+                    SizedBox(width: cell, height: cell),
+                ],
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    if (onTap != null) {
+      return GestureDetector(onTap: onTap, child: content);
+    }
+    return content;
+  }
+
+  Widget _cell(Map user, double cellSize) {
+    final avatarId = user['avatarId']?.toString();
+    final nickname = user['nickname']?.toString() ?? '';
+    final fallback = QChatAvatar(nickname, size: cellSize);
+
+    return SizedBox.square(
+      dimension: cellSize,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: avatarId != null && avatarId.isNotEmpty
+            ? MediaImage(
+                id: avatarId,
+                placeholder: fallback,
+                errorWidget: fallback,
+              )
+            : fallback,
+      ),
+    );
+  }
+}

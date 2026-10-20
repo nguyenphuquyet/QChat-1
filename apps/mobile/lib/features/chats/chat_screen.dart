@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import '../../core/design_system/dialogs.dart';
 import 'dart:math' as math;
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
@@ -17,6 +19,7 @@ import 'chat_details_screen.dart';
 import '../../core/design_system/media_widgets.dart';
 import '../../core/design_system/qchat_animations.dart';
 import '../../core/design_system/reference_widgets.dart';
+import '../../core/network/media_upload.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, required this.id});
@@ -41,6 +44,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   bool attachments = false, voice = false;
   String myName = 'Q';
   Color? chatBackground;
+  ImageProvider? chatBackgroundImage;
   final inputFocus = FocusNode();
   double keyboardHeight = 0;
   Timer? panelTimer;
@@ -221,8 +225,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     try {
       final client = ref.read(clientProvider);
       final color = await client.local?.read('chatBackground:${widget.id}');
+      final bgImg = await client.local?.read('chatBackgroundImage:${widget.id}');
       if (mounted) {
-        setState(() => chatBackground = color is int ? Color(color) : null);
+        setState(() {
+          chatBackground = color is int ? Color(color) : null;
+          if (bgImg is String && bgImg.isNotEmpty) {
+            try {
+              chatBackgroundImage = MemoryImage(base64Decode(bgImg));
+            } catch (_) {
+              chatBackgroundImage = null;
+            }
+          } else {
+            chatBackgroundImage = null;
+          }
+        });
       }
       final cached = await client.local?.read('messages:${widget.id}');
       client.clearedSequences[widget.id] =
@@ -317,17 +333,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     }
   }
 
-  Future<void> attach({List<String>? extensions}) async {
-    final result = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions:
-          extensions ??
-          ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mp3', 'pdf'],
-    );
-    if (result == null) return;
-    final file = result;
+  Future<void> attachFile(PlatformFile file) async {
     final bytes = await file.readAsBytes();
-
     const mime = {
       'jpg': 'image/jpeg',
       'jpeg': 'image/jpeg',
@@ -338,7 +345,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       'mp3': 'audio/mpeg',
       'pdf': 'application/pdf',
     };
-    final type = mime[file.extension];
+    final ext = file.extension?.toLowerCase();
+    final type = mime[ext];
     if (type == null) return;
     setState(() => uploading = true);
     try {
@@ -373,6 +381,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     }
   }
 
+  Future<void> attach({List<String>? extensions}) async {
+    final result = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions:
+          extensions ??
+          ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mp3', 'pdf'],
+    );
+    if (result != null) await attachFile(result);
+  }
+
+  Future<void> attachImage() async {
+    final file = await pickImageWithSource(context);
+    if (file != null) await attachFile(file);
+  }
+
+  Future<void> takePhoto() async {
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: ImageSource.camera);
+      if (photo != null) {
+        await attachFile(XFilePlatformFile(photo));
+      }
+    } catch (_) {
+      if (mounted) setState(() => error = tr(context, 'networkError'));
+    }
+  }
+
   String messageTime(dynamic raw) {
     final d = DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
     if (d == null) return '';
@@ -396,9 +431,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       (
         'image',
         'image',
-        () => attach(extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp']),
+        attachImage,
       ),
-      ('camera', 'camera', () => openFeature(c, 'camera')),
+      ('camera', 'camera', takePhoto),
       ('location', 'location', () => openFeature(c, 'location')),
       ('favorites', 'favorites', () => c.push('/favorites')),
       ('me', 'contactCard', () => openFeature(c, 'contactCard')),
@@ -490,6 +525,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 ],
               ),
             ),
+            actions: [
+              TDialogAction(
+                child: Text(tr(c, 'cancel')),
+                onPressed: () => Navigator.pop(c),
+                variant: TButtonVariant.text,
+              ),
+            ],
           ),
         ),
       );
@@ -664,6 +706,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return QChatPage(
       title: title,
       background: chatBackground,
+      backgroundImage: chatBackgroundImage,
       leading: QChatIconButton(
         'back',
         label: tr(c, 'back'),

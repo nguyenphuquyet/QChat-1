@@ -394,6 +394,24 @@ const translations = <String, List<String>>{
     'Tiếp tục đồng nghĩa bạn đồng ý chính sách riêng tư QChat.',
     '继续即表示您同意 QChat 隐私政策。',
   ],
+  'photoLibrary': ['Photo library', 'Thư viện ảnh', '照片库'],
+  'fromFiles': ['Files', 'Tệp', '文件'],
+  'selectWallpaper': ['Select wallpaper', 'Chọn hình nền', '选择壁纸'],
+  'clearWallpaper': ['Default background', 'Hình nền mặc định', '默认背景'],
+  'admins': ['Admins', 'Quản trị viên', '管理员'],
+  'allMembers': ['All', 'Tất cả', '全部'],
+  'groupAdmin': ['Admin', 'Phó nhóm', '管理员'],
+  'groupMember': ['Member', 'Thành viên', '普通成员'],
+  'searchMembers': ['Search members', 'Tìm kiếm thành viên', '搜索成员'],
+  'removeMember': ['Remove member', 'Xóa thành viên', '移出群聊'],
+  'removeMemberNote': [
+    'Remove this member from the group?',
+    'Xóa thành viên này khỏi nhóm?',
+    '将此成员移出群聊？',
+  ],
+  'changeGroupName': ['Change group name', 'Đổi tên nhóm', '修改群名称'],
+  'groupAvatar': ['Group avatar', 'Ảnh nhóm', '群头像'],
+  'changeGroupAvatar': ['Change group avatar', 'Đổi ảnh đại diện nhóm', '修改群头像'],
 };
 String tr(BuildContext context, String key) {
   final language = Localizations.localeOf(context).languageCode;

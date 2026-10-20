@@ -31,6 +31,7 @@ class QChatPage extends StatelessWidget {
     this.trailing,
     this.bottom,
     this.background,
+    this.backgroundImage,
     this.statusBackground,
     this.navigationBackground,
     this.edgeToEdge = false,
@@ -39,6 +40,7 @@ class QChatPage extends StatelessWidget {
   final String? title;
   final Widget? leading, trailing, bottom;
   final Color? background, statusBackground, navigationBackground;
+  final ImageProvider? backgroundImage;
   final bool edgeToEdge;
   @override
   Widget build(BuildContext c) {
@@ -63,8 +65,16 @@ class QChatPage extends StatelessWidget {
             ? Brightness.light
             : Brightness.dark,
       ),
-      child: ColoredBox(
-        color: pageColor,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: pageColor,
+          image: backgroundImage != null
+              ? DecorationImage(
+                  image: backgroundImage!,
+                  fit: BoxFit.cover,
+                )
+              : null,
+        ),
         child: Column(
           children: [
             if (title != null)

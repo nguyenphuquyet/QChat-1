@@ -31,11 +31,8 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
       error = null;
     });
     try {
-      final selected = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: video ? ['mp4', 'mov'] : imageExtensions,
-      );
-      if (!mounted) return;
+      final selected = await pickMediaWithSource(context, video: video);
+      if (!mounted || selected.isEmpty) return;
       for (final file in selected) {
         final size = await file.length() ?? 0;
         if (size > maxMediaBytes) throw StateError('mediaTooLarge');

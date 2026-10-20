@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,8 @@ import '../../core/design_system/dialogs.dart';
 import '../../core/design_system/detail_page.dart';
 import '../../core/design_system/media_widgets.dart';
 import '../../core/localization/strings.dart';
+import '../../core/network/media_upload.dart';
+import 'group_members_screen.dart';
 
 class ChatDetailsScreen extends ConsumerStatefulWidget {
   const ChatDetailsScreen({super.key, required this.id});
@@ -57,34 +60,104 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
   }
 
   Future<void> background() async {
-    await TDialog.show<void>(
-      context,
-      dialog: Builder(
-        builder: (c) => TDialog(
-          title: Text(tr(c, 'chatBackground')),
-          content: Wrap(
-            spacing: 16,
-            runSpacing: 16,
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: surface(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              for (final value in [
-                0xffededed,
-                0xffe4eee5,
-                0xffe5edf5,
-                0xfff5e8e1,
-              ])
-                TButton(
-                  onPressed: () async {
-                    await ref
-                        .read(clientProvider)
-                        .local
-                        ?.cache('chatBackground:${widget.id}', value);
-                    if (c.mounted) Navigator.pop(c);
-                  },
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(Color(value)),
-                  ),
-                  child: const SizedBox(width: 36, height: 36),
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+              ListTile(
+                leading: const TIcon(TIcons.image, size: 24, color: QChatColors.primary),
+                title: Text(tr(c, 'selectWallpaper')),
+                onTap: () async {
+                  Navigator.pop(c);
+                  final file = await pickImageWithSource(context);
+                  if (file == null) return;
+                  final bytes = await file.readAsBytes();
+                  if (bytes.isNotEmpty) {
+                    final base64Str = base64Encode(bytes);
+                    final client = ref.read(clientProvider);
+                    await client.local?.removeCache('chatBackground:${widget.id}');
+                    await client.local?.cache('chatBackgroundImage:${widget.id}', base64Str);
+                    client.changes.add(null);
+                    if (mounted) setState(() {});
+                  }
+                },
+              ),
+              ListTile(
+                leading: const TIcon(TIcons.close, size: 24, color: QChatColors.danger),
+                title: Text(tr(c, 'clearWallpaper')),
+                onTap: () async {
+                  Navigator.pop(c);
+                  final client = ref.read(clientProvider);
+                  await client.local?.removeCache('chatBackgroundImage:${widget.id}');
+                  await client.local?.removeCache('chatBackground:${widget.id}');
+                  client.changes.add(null);
+                  if (mounted) setState(() {});
+                },
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (final value in [
+                      0xffededed,
+                      0xffe4eee5,
+                      0xffe5edf5,
+                      0xfff5e8e1,
+                    ])
+                      GestureDetector(
+                        onTap: () async {
+                          Navigator.pop(c);
+                          final client = ref.read(clientProvider);
+                          await client.local?.removeCache('chatBackgroundImage:${widget.id}');
+                          await client.local?.cache('chatBackground:${widget.id}', value);
+                          client.changes.add(null);
+                          if (mounted) setState(() {});
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(value),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.black12,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                title: Center(
+                  child: Text(
+                    tr(c, 'cancel'),
+                    style: const TextStyle(color: QChatColors.muted),
+                  ),
+                ),
+                onTap: () => Navigator.pop(c),
+              ),
             ],
           ),
         ),
@@ -123,7 +196,20 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
       if (mounted) {
         await TDialog.show<void>(
           context,
-          dialog: TDialog(content: Text(tr(context, 'reportSent'))),
+          barrierDismissible: true,
+          dialog: Builder(
+            builder: (c) => TDialog(
+              content: Text(tr(c, 'reportSent')),
+              actions: [
+                TDialogAction(
+                  child: Text(tr(c, 'confirm')),
+                  onPressed: () => Navigator.pop(c),
+                  role: TDialogActionRole.primary,
+                  variant: TButtonVariant.text,
+                ),
+              ],
+            ),
+          ),
         );
       }
     });
@@ -142,6 +228,7 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
       if (!mounted) return;
       final chosen = await TDialog.show<String>(
         context,
+        barrierDismissible: true,
         dialog: Builder(
           builder: (c) => TDialog(
             title: Text(tr(c, 'add')),
@@ -162,6 +249,13 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
                       ],
                     ),
             ),
+            actions: [
+              TDialogAction(
+                child: Text(tr(c, 'cancel')),
+                onPressed: () => Navigator.pop(c),
+                variant: TButtonVariant.text,
+              ),
+            ],
           ),
         ),
       );
@@ -204,31 +298,57 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
     });
   }
 
-  Future<void> showMembers() => TDialog.show<void>(
-    context,
-    dialog: Builder(
-      builder: (c) => TDialog(
-        title: Text(tr(c, 'groupMembers')),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 360,
-          child: ListView(
-            children: [
-              for (final member in conversation!['members'])
-                TCell(
-                  image: UserAvatar(member['user'], size: 42),
-                  title: Text(member['user']['nickname']),
-                  note: member['role'] == 'OWNER'
-                      ? Text(tr(c, 'groupOwner'))
-                      : null,
-                  onTap: () {
-                    Navigator.pop(c);
-                    context.push('/user/${member['userId']}');
-                  },
-                ),
-            ],
-          ),
-        ),
+  Future<void> changeGroupName() async {
+    final current = conversation?['title']?.toString() ?? '';
+    final name = await editText(
+      context,
+      tr(context, 'changeGroupName'),
+      initial: current,
+      maxLength: 100,
+    );
+    if (name == null || name.trim().isEmpty || name.trim() == current) return;
+    await run(() async {
+      final client = ref.read(clientProvider);
+      await client.dio.patch(
+        '/conversations/${widget.id}',
+        data: {'title': name.trim()},
+      );
+      await load();
+      client.changes.add(null);
+    });
+  }
+
+  Future<void> changeGroupAvatar() async {
+    final file = await pickImageWithSource(context);
+    if (file == null) return;
+    await run(() async {
+      final client = ref.read(clientProvider);
+      final id = await uploadMedia(client, file);
+      final currentAnn = conversation?['announcement']?.toString() ?? '';
+      Map<String, dynamic> annMap = {};
+      if (currentAnn.startsWith('{')) {
+        try {
+          annMap = Map<String, dynamic>.from(jsonDecode(currentAnn));
+        } catch (_) {}
+      }
+      annMap['avatarId'] = id;
+      await client.dio.patch(
+        '/conversations/${widget.id}',
+        data: {'announcement': jsonEncode(annMap)},
+      );
+      await load();
+      client.changes.add(null);
+    });
+  }
+
+  Future<void> showMembers() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => GroupMembersScreen(
+        conversationId: widget.id,
+        initialConversation: conversation != null
+            ? Map<String, dynamic>.from(conversation!)
+            : null,
+        onUpdated: load,
       ),
     ),
   );
@@ -248,6 +368,75 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
           if (conversation == null && error == null)
             const Center(child: TLoading()),
           if (conversation != null) ...[
+            if (conversation!['kind'] == 'GROUP') ...[
+              Container(
+                color: surface(c),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        GroupAvatar(conversation!, size: 58),
+                        Positioned(
+                          right: -4,
+                          bottom: -4,
+                          child: GestureDetector(
+                            onTap: busy ? null : changeGroupAvatar,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: QChatColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: surface(c), width: 1.5),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: busy ? null : changeGroupName,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              conversation?['title'] ?? tr(c, 'group'),
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${members.length} ${tr(c, 'groupMembers').toLowerCase()}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: QChatColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20, color: QChatColors.muted),
+                      onPressed: busy ? null : changeGroupName,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 9),
+            ],
             Container(
               color: surface(c),
               padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
@@ -277,16 +466,38 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
                   if (conversation!['kind'] == 'DIRECT' ||
                       ['OWNER', 'ADMIN'].contains(own?['role']))
                     SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: TButton(
-                        variant: TButtonVariant.outline,
-                        onPressed: busy ? null : addMember,
-                        child: const TIcon(
-                          TIcons.add,
-                          color: QChatColors.muted,
-                          size: 30,
-                        ),
+                      width: 52,
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: busy ? null : addMember,
+                            child: Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Theme.of(c).brightness == Brightness.dark
+                                      ? const Color(0xff444444)
+                                      : const Color(0xffdcdcdc),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: const Center(
+                                child: TIcon(
+                                  TIcons.add,
+                                  color: QChatColors.muted,
+                                  size: 26,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            '',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -299,6 +510,19 @@ class _ChatDetailsScreenState extends ConsumerState<ChatDetailsScreen> {
                 note: Text('${members.length}'),
                 arrow: true,
                 onTap: showMembers,
+              ),
+              const SizedBox(height: 9),
+              TCell(
+                title: Text(tr(c, 'groupName')),
+                note: Text(conversation?['title'] ?? ''),
+                arrow: true,
+                onTap: busy ? null : changeGroupName,
+              ),
+              const SizedBox(height: 9),
+              TCell(
+                title: Text(tr(c, 'groupAvatar')),
+                arrow: true,
+                onTap: busy ? null : changeGroupAvatar,
               ),
               const SizedBox(height: 9),
             ],

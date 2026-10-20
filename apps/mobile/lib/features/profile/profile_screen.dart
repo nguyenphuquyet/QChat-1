@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
@@ -35,10 +34,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       error = null;
     });
     try {
-      final file = await FilePicker.pickFile(
-        type: FileType.custom,
-        allowedExtensions: imageExtensions,
-      );
+      final file = await pickImageWithSource(context);
       if (file == null || !mounted) return;
       final client = ref.read(clientProvider);
       final id = await uploadMedia(client, file);

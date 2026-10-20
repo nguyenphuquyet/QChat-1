@@ -235,7 +235,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   orElse: () => member,
                 )?['user'],
               )
-            : null,
+            : GroupAvatar(item, size: 48),
         preview: last == null
             ? ''
             : last['recalledAt'] != null
@@ -286,7 +286,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (mounted) {
         await TDialog.show<void>(
           context,
-          dialog: TDialog(content: Text(tr(context, 'networkError'))),
+          barrierDismissible: true,
+          dialog: Builder(
+            builder: (c) => TDialog(
+              content: Text(tr(c, 'networkError')),
+              actions: [
+                TDialogAction(
+                  child: Text(tr(c, 'confirm')),
+                  onPressed: () => Navigator.pop(c),
+                  role: TDialogActionRole.primary,
+                  variant: TButtonVariant.text,
+                ),
+              ],
+            ),
+          ),
         );
       }
     }
