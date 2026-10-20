@@ -63,21 +63,18 @@ class QChatPage extends StatelessWidget {
             ? Brightness.light
             : Brightness.dark,
       ),
-      child: ColoredBox(
-        color: pageColor,
-        child: SafeArea(
-          top: !edgeToEdge,
-          bottom: !edgeToEdge,
+      child: SafeArea(
+        top: !edgeToEdge,
+        bottom: false,
+        child: ColoredBox(
+          color: pageColor,
           child: Column(
             children: [
               if (title != null)
-                SafeArea(
-                  bottom: !edgeToEdge,
-                  child: QChatAppBar(
-                    title: title!,
-                    leading: leading,
-                    trailing: trailing,
-                  ),
+                QChatAppBar(
+                  title: title!,
+                  leading: leading,
+                  trailing: trailing,
                 ),
               Expanded(
                 child: MediaQuery.removePadding(
