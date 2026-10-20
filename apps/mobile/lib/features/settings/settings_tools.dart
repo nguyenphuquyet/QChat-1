@@ -6,6 +6,7 @@ import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
+import '../../core/design_system/media_widgets.dart';
 import '../../core/design_system/reference_widgets.dart';
 import '../../core/design_system/dialogs.dart';
 import '../../core/localization/strings.dart';
@@ -186,6 +187,7 @@ class _SettingsToolsState extends ConsumerState<SettingsTools> {
                     await action(() async {
                       await client.local?.clearReadCache();
                       PaintingBinding.instance.imageCache.clear();
+                      MediaCache.clear();
                     });
                   }
                 }),

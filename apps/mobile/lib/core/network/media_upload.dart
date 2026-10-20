@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import '../design_system/media_widgets.dart';
 import 'client.dart';
 
 const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -45,7 +46,9 @@ Future<String> uploadMedia(QChatClient client, PlatformFile file) async {
       options: Options(headers: {'Content-Type': mime}),
     );
     await client.post('/media/complete', {'mediaId': intent['id']});
-    return intent['id'] as String;
+    final mediaId = intent['id'] as String;
+    MediaCache.put(mediaId, bytes, local: client.local);
+    return mediaId;
   } finally {
     uploader.close();
   }
