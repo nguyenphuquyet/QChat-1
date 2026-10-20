@@ -560,7 +560,6 @@ class QChatChatBubble extends StatelessWidget {
                 style: TextStyle(
                   color: mine ? QChatColors.ink : ink(c),
                   fontSize: 16,
-                  fontFamily: 'Arial',
                   height: 1.4,
                 ),
                 child: child,

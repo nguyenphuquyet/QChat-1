@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart';
 import '../localization/strings.dart';
 
 Future<String?> editText(
@@ -8,9 +8,13 @@ Future<String?> editText(
   int maxLength = 300,
   bool secret = false,
   int lines = 1,
-}) => showDialog<String>(
+}) => showGeneralDialog<String>(
   context: context,
-  builder: (_) => _TextDialog(
+  barrierDismissible: true,
+  barrierLabel: tr(context, 'cancel'),
+  barrierColor: const Color(0x66000000),
+  transitionDuration: const Duration(milliseconds: 160),
+  pageBuilder: (c, _, _) => _TextDialog(
     title: title,
     initial: initial,
     maxLength: maxLength,
@@ -24,19 +28,25 @@ Future<bool> confirmAction(
   String title,
   String message,
 ) async =>
-    await showDialog<bool>(
+    await TDialog.showPopupDialog<bool>(
       context: context,
-      builder: (c) => AlertDialog(
+      builder: (c) => TDialog(
         title: Text(title),
         content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: Text(tr(c, 'cancel')),
+        buttons: [
+          TDialogButtonData(
+            title: Text(tr(c, 'cancel')),
+            action: (_) {
+              Navigator.pop(c, false);
+              return true;
+            },
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(c, true),
-            child: Text(tr(c, 'confirm')),
+          TDialogButtonData(
+            title: Text(tr(c, 'confirm')),
+            action: (_) {
+              Navigator.pop(c, true);
+              return true;
+            },
           ),
         ],
       ),
@@ -67,27 +77,45 @@ class _TextDialogState extends State<_TextDialog> {
   }
 
   @override
-  Widget build(BuildContext c) => AlertDialog(
-    title: Text(widget.title),
-    content: TextField(
-      controller: controller,
-      autofocus: true,
-      obscureText: widget.secret,
-      maxLength: widget.maxLength,
-      maxLines: widget.lines,
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(c),
-        child: Text(tr(c, 'cancel')),
-      ),
-      TextButton(
-        onPressed: () => Navigator.pop(
-          c,
-          widget.secret ? controller.text : controller.text.trim(),
+  Widget build(BuildContext c) => Align(
+    alignment: Alignment.center,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Material(
+        type: MaterialType.transparency,
+        child: TDialog(
+          title: Text(widget.title),
+          content: TInput(
+            controller: controller,
+            autofocus: true,
+            obscureText: widget.secret,
+            maxLength: widget.maxLength,
+            maxLines: widget.lines,
+            hintText: '',
+          ),
+          buttons: [
+            TDialogButtonData(
+              title: Text(tr(c, 'cancel')),
+              action: (_) {
+                Navigator.pop(c);
+                return true;
+              },
+            ),
+            TDialogButtonData(
+              title: Text(tr(c, 'save')),
+              action: (_) {
+                Navigator.pop(
+                  c,
+                  widget.secret
+                      ? controller.text
+                      : controller.text.trim(),
+                );
+                return true;
+              },
+            ),
+          ],
         ),
-        child: Text(tr(c, 'save')),
       ),
-    ],
+    ),
   );
 }

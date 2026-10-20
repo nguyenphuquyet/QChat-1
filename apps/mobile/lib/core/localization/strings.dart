@@ -324,6 +324,7 @@ const translations = <String, List<String>>{
   'noItems': ['Nothing here yet', 'Chưa có nội dung', '暂无内容'],
   'qr': ['My QR code', 'Mã QR của tôi', '我的二维码'],
   'connected': ['Connected', 'Đã kết nối', '已连接'],
+  'disconnected': ['Disconnected', 'Đã ngắt kết nối', '连接已断开'],
   'offline': [
     'Offline · messages will retry',
     'Ngoại tuyến · tin nhắn sẽ gửi lại',

@@ -9,12 +9,10 @@ ThemeData qchatTheme(bool dark) => ThemeData(
   splashFactory: NoSplash.splashFactory,
   highlightColor: Colors.transparent,
   colorSchemeSeed: QChatColors.green,
-  fontFamily: 'Arial',
   extensions: [
     TThemeData.defaultData(),
     TInputThemeData(
       hintStyle: const TextStyle(
-        fontFamily: 'Arial',
         fontSize: 16,
         color: Color(0xffb2b2b2),
       ),

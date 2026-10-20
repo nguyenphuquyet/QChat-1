@@ -75,26 +75,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ('payments', 'payments', () => openFeature(c, 'payments')),
   ]);
   @override
-  Widget build(BuildContext c) => QChatPage(
-    statusBackground: index == 3 ? surface(c) : null,
-    navigationBackground: navigationSurface(c),
-    edgeToEdge: true,
-    title: index == 3
-        ? null
-        : index == 0
-        ? 'QChat'
-        : tr(c, index == 1 ? 'contacts' : 'discover'),
-    trailing: index < 2
-        ? QChatIconButton(
-            index == 0 ? 'plus' : 'addFriend',
-            label: tr(c, 'addFriend'),
-            onTap: () => index == 0 ? menu(c) : c.push('/friends'),
-          )
-        : null,
-    bottom: QChatBottomNavigation(index: index, onChanged: switchTab),
-    child: index == 2
-        ? discover(c)
-        : FutureBuilder<dynamic>(
+  Widget build(BuildContext c) {
+    final offline = ref.read(clientProvider).offline;
+    return ValueListenableBuilder<bool>(
+      valueListenable: offline,
+      builder: (c, isOffline, _) => QChatPage(
+        statusBackground: index == 3 ? surface(c) : null,
+        navigationBackground: navigationSurface(c),
+        edgeToEdge: true,
+        title: index == 3
+            ? null
+            : index == 0
+            ? (isOffline ? tr(c, 'disconnected') : 'QChat')
+            : tr(c, index == 1 ? 'contacts' : 'discover'),
+        trailing: index < 2
+            ? QChatIconButton(
+                index == 0 ? 'plus' : 'addFriend',
+                label: tr(c, 'addFriend'),
+                onTap: () => index == 0 ? menu(c) : c.push('/friends'),
+              )
+            : null,
+        bottom: QChatBottomNavigation(index: index, onChanged: switchTab),
+        child: index == 2
+            ? discover(c)
+            : FutureBuilder<dynamic>(
             key: ValueKey(index),
             future: data,
             builder: (c, s) {
@@ -143,7 +147,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             },
           ),
-  );
+      ),
+    );
+  }
   Widget chats(BuildContext c, List items) => ListView(
     children: [
       for (final item in items) conversation(c, item),
