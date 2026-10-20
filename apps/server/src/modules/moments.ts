@@ -68,7 +68,11 @@ export async function momentsRoute(
           author: { select: publicUser },
           media: { include: { media: { select: { mime: true, name: true } } } },
           likes: true,
-          comments: { take: 30, orderBy: { createdAt: "asc" } },
+          comments: {
+            take: 30,
+            orderBy: { createdAt: "asc" },
+            include: { author: { select: publicUser } },
+          },
         },
         orderBy: { createdAt: "desc" },
         take: 20,

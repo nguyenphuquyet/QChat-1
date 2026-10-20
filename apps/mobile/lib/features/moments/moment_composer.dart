@@ -107,6 +107,7 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
   Widget build(BuildContext c) => PopScope(
     canPop: !busy,
     child: QChatPage(
+      background: surface(c),
       title: tr(c, 'post'),
       leading: QChatIconButton(
         'back',

@@ -47,6 +47,7 @@ class QChatIcon extends StatelessWidget {
       'unlock' => TIcons.lock_off,
       'close' => TIcons.close,
       'delete' => TIcons.delete,
+      'heart' => filled ? TIcons.heart_filled : TIcons.heart,
       _ => null,
     };
     if (glyph != null) return Icon(glyph, size: size, color: color);

@@ -289,8 +289,9 @@ class _MomentCardState extends ConsumerState<_MomentCard> {
                       child: Row(
                         children: [
                           QChatIcon(
-                            'image', // placeholder — dùng icon phù hợp
+                            'heart',
                             size: 18,
+                            filled: liked,
                             color: liked
                                 ? QChatColors.danger
                                 : QChatColors.muted,
@@ -357,14 +358,17 @@ class _MomentCardState extends ConsumerState<_MomentCard> {
                                   color: ink(c),
                                 ),
                                 children: [
-                                  TextSpan(
-                                    text:
-                                        '${comment['author']?['nickname'] ?? ''}: ',
-                                    style: const TextStyle(
-                                      color: Color(0xff546d91),
-                                      fontWeight: FontWeight.w600,
+                                  if ((comment['author']?['nickname'] ?? '')
+                                      .toString()
+                                      .isNotEmpty)
+                                    TextSpan(
+                                      text:
+                                          '${comment['author']['nickname']}: ',
+                                      style: const TextStyle(
+                                        color: Color(0xff546d91),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
                                   TextSpan(text: comment['text']),
                                 ],
                               ),
