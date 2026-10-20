@@ -117,3 +117,4 @@ media files or guarantee a first-ever browser page load without internet.
 - `tests`: contract/security unit tests and real-service integration scenario.
 
 No end-to-end encryption is claimed. Private message content is stored server-side. Full push/background-call support and several advanced UI flows remain unfinished.
+"# Trigger CI" 
