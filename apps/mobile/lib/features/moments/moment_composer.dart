@@ -93,16 +93,65 @@ class _MomentComposerState extends ConsumerState<MomentComposer> {
 
   /// Hiện action sheet chọn quyền riêng tư
   void _pickPrivacy() {
-    TActionSheet.showList<bool>(
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    TPopup.show(
       context,
-      showCancel: false,
-      items: [
-        TActionSheetItem(value: false, label: tr(context, 'friends')),
-        TActionSheetItem(value: true, label: tr(context, 'private')),
-      ],
-      onSelected: (item) => setState(() => private = item.value),
+      options: TPopupOptions.bottom(
+        useSafeArea: false,
+        radius: 12,
+        backgroundColor: surface(context),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _privacyOption(
+              label: tr(context, 'friends'),
+              selected: !private,
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => private = false);
+              },
+            ),
+            Divider(
+              height: 0.5,
+              thickness: 0.5,
+              color: ink(context).withValues(alpha: 0.08),
+            ),
+            _privacyOption(
+              label: tr(context, 'private'),
+              selected: private,
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => private = true);
+              },
+            ),
+            SizedBox(height: bottomInset > 0 ? bottomInset : 12),
+          ],
+        ),
+      ),
     );
   }
+
+  Widget _privacyOption({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) =>
+      InkWell(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          height: 56,
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              color: selected ? QChatColors.green : ink(context),
+            ),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext c) => PopScope(

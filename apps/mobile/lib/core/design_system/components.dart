@@ -611,33 +611,39 @@ Future<void> qchatSheet(
   barrierLabel: tr(context, 'cancel'),
   barrierColor: const Color(0x66000000),
   transitionDuration: const Duration(milliseconds: 160),
-  pageBuilder: (c, _, _) => Align(
-    alignment: Alignment.bottomCenter,
-    child: DefaultTextStyle(
-      style: TextStyle(color: ink(c), fontSize: 16),
-      child: Container(
-        color: surface(c),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final action in actions)
+  pageBuilder: (c, _, _) {
+    final bottomInset = MediaQuery.paddingOf(c).bottom;
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: DefaultTextStyle(
+        style: TextStyle(color: ink(c), fontSize: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: surface(c),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          ),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + bottomInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final action in actions)
+                QChatListTile(
+                  title: action.$1,
+                  onTap: () {
+                    Navigator.pop(c);
+                    action.$2();
+                  },
+                ),
               QChatListTile(
-                title: action.$1,
-                onTap: () {
-                  Navigator.pop(c);
-                  action.$2();
-                },
+                title: tr(c, 'cancel'),
+                onTap: () => Navigator.pop(c),
               ),
-            QChatListTile(
-              title: tr(c, 'cancel'),
-              onTap: () => Navigator.pop(c),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  ),
+    );
+  },
 );
 
 class QChatError extends StatelessWidget {

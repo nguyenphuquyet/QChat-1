@@ -107,7 +107,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                     vertical: 10,
                   ),
                   hintStyle: const TextStyle(
-                    fontFamily: 'Arial',
                     fontSize: 16,
                     color: Color(0xffb2b2b2),
                   ),
