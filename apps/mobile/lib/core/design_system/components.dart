@@ -71,10 +71,14 @@ class QChatPage extends StatelessWidget {
           child: Column(
             children: [
               if (title != null)
-                QChatAppBar(
-                  title: title!,
-                  leading: leading,
-                  trailing: trailing,
+                SafeArea(
+                  top: edgeToEdge,
+                  bottom: false,
+                  child: QChatAppBar(
+                    title: title!,
+                    leading: leading,
+                    trailing: trailing,
+                  ),
                 ),
               Expanded(
                 child: MediaQuery.removePadding(
