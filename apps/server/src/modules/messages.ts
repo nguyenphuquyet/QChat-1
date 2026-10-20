@@ -44,8 +44,10 @@ export async function messagesRoute(
       .object({ conversationId: uuid, clientId: uuid })
       .strict()
       .parse(body);
-    requireCondition(!m.mediaId, 400, "MEDIA_FORWARD_REQUIRES_COPY");
-    return sendMessage(userId, { ...v, kind: m.kind as "TEXT", text: m.text });
+    return sendMessage(userId, {
+      ...v, kind: m.kind as "TEXT", text: m.text,
+      ...(m.mediaId ? { mediaId: m.mediaId } : {}),
+    }, m.id);
   }
   if (!sub && method === "DELETE")
     return db.messageUserState.upsert({

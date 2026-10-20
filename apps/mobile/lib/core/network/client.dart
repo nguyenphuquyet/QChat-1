@@ -30,6 +30,7 @@ class QChatClient {
   final Map<String, Map<String, dynamic>> outgoing = {};
   final Map<String, Map<String, dynamic>> confirmed = {};
   final Map<String, Map<String, int>> receipts = {};
+  final Map<String, int> clearedSequences = {};
   final Map<String, Future<List<Map<String, dynamic>>>> syncing = {};
   String? userId, token;
   io.Socket? socket;
@@ -185,6 +186,14 @@ class QChatClient {
       syncInbox();
       changes.add(null);
     });
+    socket!.on('conversation:deleted', (event) async {
+      final id = event['conversationId'] as String;
+      confirmed.removeWhere((_, m) => m['conversationId'] == id);
+      await local?.removeCache('/conversations');
+      await local?.removeCache('/conversations/$id');
+      await local?.removeCache('messages:$id');
+      changes.add(null);
+    });
     socket!.on('message:new', (event) async {
       try {
         _checked.clear();
@@ -306,6 +315,36 @@ class QChatClient {
 
   Future<dynamic> post(String path, Object data) async =>
       (await dio.post(path, data: data)).data;
+  Future<void> applyClearedSequence(String id, int sequence) async {
+    if (sequence < (clearedSequences[id] ?? 0)) {
+      sequence = clearedSequences[id]!;
+    }
+    clearedSequences[id] = sequence;
+    await local?.cache('clearedSequence:$id', sequence);
+    final cached = await local?.read('messages:$id') as List? ?? [];
+    await local?.cache(
+      'messages:$id',
+      cached
+          .where((m) => m['sequence'] == null || m['sequence'] > sequence)
+          .toList(),
+    );
+    confirmed.removeWhere(
+      (_, m) =>
+          m['conversationId'] == id && (m['sequence'] as int? ?? 0) <= sequence,
+    );
+  }
+
+  Future<void> clearHistory(String id, {bool hide = false}) async {
+    final result = await dio.delete(
+      '/conversations/$id/history',
+      data: {'hide': hide},
+    );
+    await applyClearedSequence(id, result.data['clearedSequence'] as int);
+    await local?.removeCache('/conversations');
+    await local?.removeCache('/conversations/$id');
+    changes.add(null);
+  }
+
   Future<void> syncInbox() async {
     try {
       final conversations = await get('/conversations', cached: false);
@@ -341,7 +380,11 @@ class QChatClient {
   ) {
     final rows = <String, Map<String, dynamic>>{};
     for (final m in [...base, ...outgoing.values, ...confirmed.values]) {
-      if (m['conversationId'] == id) rows[m['clientId'] ?? m['id']] = m;
+      if (m['conversationId'] == id &&
+          (m['sequence'] == null ||
+              (m['sequence'] as int) > (clearedSequences[id] ?? 0))) {
+        rows[m['clientId'] ?? m['id']] = m;
+      }
     }
     final result = rows.values.toList();
     result.sort((a, b) {
@@ -448,6 +491,8 @@ class QChatClient {
   }
 
   Future<List<Map<String, dynamic>>> _messages(String id) async {
+    clearedSequences[id] =
+        await local?.read('clearedSequence:$id') as int? ?? 0;
     final key = 'messages:$id';
     final old = List<Map<String, dynamic>>.from(
       (await local!.read(key) ?? []).map((e) => Map<String, dynamic>.from(e)),
@@ -511,6 +556,7 @@ class QChatClient {
   }
 
   Future<void> clearSession() async {
+    clearedSequences.clear();
     stopping = true;
     _recovery?.cancel();
     _recovery = null;

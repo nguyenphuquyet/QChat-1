@@ -33,7 +33,7 @@ export async function unblocked(a: string, b: string) {
     "USER_BLOCKED",
   );
 }
-export async function sendMessage(userId: string, raw: MessageInput) {
+export async function sendMessage(userId: string, raw: MessageInput, forwardSourceId?: string) {
   const input = messageSchema.parse(raw);
   for (let attempt = 0; attempt < 4; attempt++)
     try {
@@ -86,10 +86,20 @@ export async function sendMessage(userId: string, raw: MessageInput) {
               400,
               "INVALID_REPLY",
             );
+          if (forwardSourceId) {
+            const source = await tx.message.findFirst({
+              where: { id: forwardSourceId, recalledAt: null, states: { none: { userId, hidden: true } } },
+            });
+            const sourceMember = source && await tx.conversationMember.findUnique({
+              where: { conversationId_userId: { conversationId: source.conversationId, userId } },
+            });
+            requireCondition(source && sourceMember && source.sequence > sourceMember.clearedSequence &&
+              source.mediaId === (input.mediaId ?? null), 403, "FORWARD_SOURCE_UNAVAILABLE");
+          }
           if (input.mediaId)
             requireCondition(
               await tx.media.findFirst({
-                where: { id: input.mediaId, ownerId: userId, status: "READY" },
+                where: { id: input.mediaId, ...(forwardSourceId ? {} : { ownerId: userId }), status: "READY" },
               }),
               400,
               "MEDIA_NOT_READY",
@@ -141,6 +151,10 @@ export async function receipt(
   requireCondition(sequence <= c.sequence, 400, "INVALID_SEQUENCE");
   const field = read ? "readSequence" : "deliveredSequence";
   await db.$transaction(async (tx) => {
+    if (read) await tx.conversationMember.updateMany({
+      where: { conversationId, userId },
+      data: { markedUnread: false },
+    });
     const changed = await tx.conversationMember.updateMany({
       where: { conversationId, userId, [field]: { lt: sequence } },
       data: { [field]: sequence },

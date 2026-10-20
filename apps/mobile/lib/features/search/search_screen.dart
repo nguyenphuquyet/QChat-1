@@ -4,6 +4,7 @@ import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
+import '../../core/design_system/media_widgets.dart';
 import '../../core/design_system/reference_widgets.dart';
 import '../../core/localization/strings.dart';
 
@@ -103,7 +104,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         QChatListTile(
                           title: item['friend']['nickname'],
                           subtitle: item['friend']['qchatId'],
-                          onTap: () => chat(item['friend']['id']),
+                          leading: UserAvatar(item['friend'], size: 42),
+                          onTap: () => c.push('/user/${item['friend']['id']}'),
                         ),
                       if (conversations.isNotEmpty)
                         const SectionLabel('conversations'),

@@ -19,6 +19,7 @@ import 'features/contacts/friends_screen.dart';
 import 'features/groups/group_screen.dart';
 import 'features/moments/moments_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/profile/user_profile_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/calls/call_screen.dart';
 import 'features/search/search_screen.dart';
@@ -68,6 +69,15 @@ class _QChatAppState extends ConsumerState<QChatApp> {
         qchatRoute(path: '/groups/new', builder: (_, s) => const GroupScreen()),
         qchatRoute(path: '/moments', builder: (_, s) => const MomentsScreen()),
         qchatRoute(path: '/profile', builder: (_, s) => const ProfileScreen()),
+        qchatRoute(
+          path: '/user',
+          builder: (_, s) =>
+              UserProfileScreen(qchatId: s.uri.queryParameters['q']),
+        ),
+        qchatRoute(
+          path: '/user/:id',
+          builder: (_, s) => UserProfileScreen(id: s.pathParameters['id']),
+        ),
         qchatRoute(
           path: '/qr',
           builder: (_, s) => const ProfileScreen(qr: true),

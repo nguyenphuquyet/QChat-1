@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 import '../../app/providers.dart';
 import 'components.dart';
+import 'package:go_router/go_router.dart';
 
 class MediaImage extends ConsumerStatefulWidget {
   const MediaImage({super.key, required this.id, this.fit = BoxFit.cover});
@@ -63,14 +64,22 @@ class UserAvatar extends StatelessWidget {
   final Map user;
   final double size;
   @override
-  Widget build(BuildContext c) => user['avatarId'] == null
-      ? QChatAvatar(user['nickname']?.toString() ?? '', size: size)
-      : ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: MediaImage(id: user['avatarId']),
-          ),
-        );
+  Widget build(BuildContext c) => Theme(
+    data: Theme.of(c).copyWith(
+      extensions: [
+        ...Theme.of(c).extensions.values.where((e) => e is! TAvatarThemeData),
+        TAvatarThemeData(dimension: size, squareBorderRadius: 5),
+      ],
+    ),
+    child: TAvatar(
+      shape: TAvatarShape.square,
+      onTap: user['id'] == null ? null : () => c.push('/user/${user['id']}'),
+      child: user['avatarId'] == null || user['avatarId'] == ''
+          ? QChatAvatar(user['nickname']?.toString() ?? '', size: size)
+          : SizedBox.square(
+              dimension: size,
+              child: MediaImage(id: user['avatarId']),
+            ),
+    ),
+  );
 }

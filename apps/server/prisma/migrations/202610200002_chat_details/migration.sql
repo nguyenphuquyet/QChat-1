@@ -1,0 +1,3 @@
+ALTER TABLE "ConversationMember"
+ADD COLUMN "markedUnread" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "clearedSequence" INTEGER NOT NULL DEFAULT 0;

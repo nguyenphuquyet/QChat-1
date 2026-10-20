@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:uuid/uuid.dart';
+import '../../core/design_system/dialogs.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,8 @@ import '../../core/design_system/components.dart';
 import '../../core/localization/strings.dart';
 import 'message_status.dart';
 import 'chat_composer.dart';
+import 'chat_details_screen.dart';
+import '../../core/design_system/media_widgets.dart';
 import '../../core/design_system/qchat_animations.dart';
 import '../../core/design_system/reference_widgets.dart';
 
@@ -25,6 +29,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     with WidgetsBindingObserver {
   final input = TextEditingController(), scroll = ScrollController();
   List<Map<String, dynamic>> messages = [];
+  final selected = <String>{};
+  bool selecting = false;
   StreamSubscription<void>? updates;
   StreamSubscription<void>? messageUpdates;
   List<dynamic> members = [];
@@ -34,6 +40,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   bool loading = true, emoji = false, uploading = false;
   bool attachments = false, voice = false;
   String myName = 'Q';
+  Color? chatBackground;
   final inputFocus = FocusNode();
   double keyboardHeight = 0;
   Timer? panelTimer;
@@ -180,8 +187,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   static const emojis = [
-    '😀', '😊', '😂', '🥰', '😍', '🤔', '😢', '😎',
-    '👍', '👏', '🙏', '💚', '❤️', '🎉', '🌻', '☕',
+    '😀',
+    '😊',
+    '😂',
+    '🥰',
+    '😍',
+    '🤔',
+    '😢',
+    '😎',
+    '👍',
+    '👏',
+    '🙏',
+    '💚',
+    '❤️',
+    '🎉',
+    '🌻',
+    '☕',
   ];
 
   void scrollToEnd() {
@@ -196,12 +217,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       return;
     }
     fetching = true;
-    final nearEnd =
-        !scroll.hasClients ||
-        scroll.offset < 100;
+    final nearEnd = !scroll.hasClients || scroll.offset < 100;
     try {
       final client = ref.read(clientProvider);
+      final color = await client.local?.read('chatBackground:${widget.id}');
+      if (mounted) {
+        setState(() => chatBackground = color is int ? Color(color) : null);
+      }
       final cached = await client.local?.read('messages:${widget.id}');
+      client.clearedSequences[widget.id] =
+          await client.local?.read('clearedSequence:${widget.id}') as int? ?? 0;
       if (cached is List && mounted) {
         setState(() {
           messages = client.visibleMessages(
@@ -211,8 +236,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           loading = false;
         });
       }
+      final c = await client.get('/conversations/${widget.id}', cached: false);
+      final ownMember = (c['members'] as List).firstWhere(
+        (m) => m['userId'] == client.userId,
+      );
+      await client.applyClearedSequence(
+        widget.id,
+        ownMember['clearedSequence'] as int? ?? 0,
+      );
+      if (ownMember['markedUnread'] == true) {
+        await client.dio.patch(
+          '/conversations/${widget.id}/state',
+          data: {'markedUnread': false},
+        );
+        await client.local?.removeCache('/conversations');
+      }
       final rows = await client.messages(widget.id);
-      final c = await client.get('/conversations/${widget.id}');
       final others = (c['members'] as List).where(
         (m) => m['userId'] != client.userId,
       );
@@ -397,7 +436,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   tr(c, a.$2),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Color(0xff888888)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xff888888),
+                  ),
                 ),
               ],
             ),
@@ -418,16 +460,92 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     ],
   );
 
-  void menu(Map<String, dynamic> m) {
-    qchatSheet(context, [
+  Future<void> forward(List<Map<String, dynamic>> rows) async {
+    try {
+      final client = ref.read(clientProvider);
+      final chats = await client.get('/conversations', cached: false) as List;
+      if (!mounted) return;
+      final target = await TDialog.show<String>(
+        context,
+        dialog: Builder(
+          builder: (c) => TDialog(
+            title: Text(tr(c, 'forward')),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 320,
+              child: ListView(
+                children: [
+                  for (final chat in chats)
+                    TCell(
+                      title: Text(
+                        chat['kind'] == 'GROUP'
+                            ? chat['title']
+                            : (chat['members'] as List)
+                                  .where((m) => m['userId'] != client.userId)
+                                  .map((m) => m['user']['nickname'])
+                                  .join(', '),
+                      ),
+                      onTap: () => Navigator.pop(c, chat['id'] as String),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      if (target == null) return;
+      for (final row in rows) {
+        await client.post('/messages/${row['id']}/forward', {
+          'conversationId': target,
+          'clientId': const Uuid().v4(),
+        });
+      }
+      if (mounted) {
+        setState(() {
+          selecting = false;
+          selected.clear();
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => error = tr(context, 'networkError'));
+    }
+  }
+
+  Future<void> deleteMessages(List<Map<String, dynamic>> rows) async {
+    if (!await confirmAction(
+      context,
+      tr(context, 'delete'),
+      tr(context, 'deleteMessagesNote'),
+    )) {
+      return;
+    }
+    await operation(() async {
+      for (final row in rows) {
+        await ref.read(clientProvider).dio.delete('/messages/${row['id']}');
+      }
+    });
+    if (mounted) {
+      setState(() {
+        selecting = false;
+        selected.clear();
+      });
+    }
+  }
+
+  Widget menu(Map<String, dynamic> m) {
+    final sent = m['pending'] != true && m['recalledAt'] == null;
+    final created = DateTime.tryParse(m['createdAt']?.toString() ?? '');
+    final actions = <(String, IconData, VoidCallback)>[
       (
-        tr(context, 'copy'),
+        'copy',
+        TIcons.copy,
         () => Clipboard.setData(ClipboardData(text: m['text'] ?? '')),
       ),
-      (tr(context, 'reply'), () => setState(() => reply = m['id'])),
-      if (m['pending'] != true) ...[
+      if (sent) ...[
+        ('forward', TIcons.share, () => forward([m])),
         (
-          tr(context, 'favorites'),
+          'favorites',
+          TIcons.star,
           () => operation(
             () => ref
                 .read(clientProvider)
@@ -438,15 +556,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 ),
           ),
         ),
+        ('delete', TIcons.delete, () => deleteMessages([m])),
         (
-          tr(context, 'delete'),
-          () => operation(
-            () => ref.read(clientProvider).dio.delete('/messages/${m['id']}'),
+          'selectMessages',
+          TIcons.check_rectangle,
+          () => setState(() {
+            selecting = true;
+            selected.add(m['id']);
+          }),
+        ),
+        (
+          'quoteMessage',
+          TIcons.quote,
+          () {
+            setState(() => reply = m['id']);
+            inputFocus.requestFocus();
+          },
+        ),
+        (
+          'search',
+          TIcons.search,
+          () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  ChatHistoryScreen(id: widget.id, query: m['text'] ?? ''),
+            ),
           ),
         ),
-        if (m['senderId'] == ref.read(clientProvider).userId)
+        if (m['senderId'] == ref.read(clientProvider).userId &&
+            created != null &&
+            DateTime.now().difference(created).inSeconds < 120)
           (
-            tr(context, 'recall'),
+            'recall',
+            TIcons.rollback,
             () => operation(
               () => ref
                   .read(clientProvider)
@@ -454,7 +596,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           ),
       ],
-    ]);
+    ];
+    return Builder(
+      builder: (c) => Wrap(
+        children: [
+          for (final a in actions)
+            SizedBox(
+              width: (MediaQuery.sizeOf(c).width.clamp(0, 430) - 48) / 4,
+              height: 78,
+              child: TButton(
+                variant: TButtonVariant.text,
+                style: const ButtonStyle(
+                  padding: WidgetStatePropertyAll(EdgeInsets.all(4)),
+                  foregroundColor: WidgetStatePropertyAll(Colors.white),
+                ),
+                onPressed: () {
+                  TPopoverController.maybeOf(c)?.close();
+                  a.$3();
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TIcon(a.$2, size: 23, color: Colors.white),
+                    const SizedBox(height: 6),
+                    Text(
+                      tr(c, a.$1),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> operation(Future<dynamic> Function() fn) async {
@@ -488,6 +664,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final reserved = math.max(keyboard, panelOpen ? panelHeight : safeBottom);
     return QChatPage(
       title: title,
+      background: chatBackground,
       leading: QChatIconButton(
         'back',
         label: tr(c, 'back'),
@@ -496,25 +673,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       trailing: QChatIconButton(
         'more',
         label: tr(c, 'settings'),
-        onTap: () => qchatSheet(c, [
-          (tr(c, 'call'), () => context.push('/call/${widget.id}?video=false')),
-          (
-            tr(c, 'videoCall'),
-            () => context.push('/call/${widget.id}?video=true'),
-          ),
-          (
-            tr(c, 'mute'),
-            () => operation(
-              () => ref
-                  .read(clientProvider)
-                  .dio
-                  .patch(
-                    '/conversations/${widget.id}/state',
-                    data: {'muted': true},
-                  ),
+        onTap: () async {
+          dismissInput();
+          await Navigator.of(c).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ChatDetailsScreen(id: widget.id),
             ),
-          ),
-        ]),
+          );
+          if (mounted) load();
+        },
       ),
       child: Column(
         children: [
@@ -541,84 +708,170 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     behavior: HitTestBehavior.translucent,
                     onTap: dismissInput,
                     child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ListView.builder(
-                    controller: scroll,
-                    // reverse: điểm bắt đầu là tin mới nhất -> mở chat không phải
-                    // cuộn từ trên xuống. Ít tin thì shrinkWrap + Align để vẫn
-                    // nằm sát phía trên như cũ.
-                    reverse: true,
-                    shrinkWrap: messages.length < 12,
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    itemCount: messages.length,
-                    itemBuilder: (c, index) {
-                      final i = messages.length - 1 - index;
-                      final m = messages[i],
-                          mine =
-                              m['senderId'] == ref.read(clientProvider).userId;
-                      return Column(
-                        children: [
-                          if (showTime(i))
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Text(
-                                messageTime(m['createdAt']),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: QChatColors.muted,
-                                ),
-                              ),
-                            ),
-                          QChatChatBubble(
-                            mine: mine,
-                            name: mine ? myName : title,
-                            onLongPress: () => menu(m),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (m['replyToId'] != null)
-                                  Text(
-                                    '↳ ${tr(c, 'reply')}',
+                      alignment: Alignment.topCenter,
+                      child: ListView.builder(
+                        controller: scroll,
+                        // reverse: điểm bắt đầu là tin mới nhất -> mở chat không phải
+                        // cuộn từ trên xuống. Ít tin thì shrinkWrap + Align để vẫn
+                        // nằm sát phía trên như cũ.
+                        reverse: true,
+                        shrinkWrap: messages.length < 12,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        itemCount: messages.length,
+                        itemBuilder: (c, index) {
+                          final i = messages.length - 1 - index;
+                          final m = messages[i],
+                              mine =
+                                  m['senderId'] ==
+                                  ref.read(clientProvider).userId;
+                          return Column(
+                            children: [
+                              if (showTime(i))
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  child: Text(
+                                    messageTime(m['createdAt']),
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       color: QChatColors.muted,
                                     ),
                                   ),
-                                if (m['mediaId'] != null)
-                                  GestureDetector(
-                                    onTap: () =>
-                                        context.push('/media/${m['mediaId']}'),
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: QChatIcon(
-                                        m['kind'] == 'IMAGE' ? 'image' : 'file',
-                                        size: 40,
+                                ),
+                              if (selecting && m['pending'] != true)
+                                TButton(
+                                  variant: TButtonVariant.text,
+                                  onPressed: () => setState(
+                                    () => selected.contains(m['id'])
+                                        ? selected.remove(m['id'])
+                                        : selected.add(m['id']),
+                                  ),
+                                  child: TIcon(
+                                    selected.contains(m['id'])
+                                        ? TIcons.check_circle_filled
+                                        : TIcons.circle,
+                                    color: QChatColors.green,
+                                  ),
+                                ),
+                              TPopoverAnchor(
+                                content: menu(m),
+                                placement: TPopoverPlacement.bottom,
+                                width:
+                                    MediaQuery.sizeOf(c).width.clamp(0, 430) -
+                                    24,
+                                showArrow: true,
+                                builder: (anchor, controller, _) =>
+                                    QChatChatBubble(
+                                      mine: mine,
+                                      avatar: UserAvatar(
+                                        members.cast<Map>().firstWhere(
+                                          (member) =>
+                                              member['userId'] == m['senderId'],
+                                          orElse: () => {
+                                            'user':
+                                                m['sender'] ??
+                                                {
+                                                  'nickname': mine
+                                                      ? myName
+                                                      : title,
+                                                },
+                                          },
+                                        )['user'],
+                                        size: 42,
+                                      ),
+                                      name: mine ? myName : title,
+                                      onLongPress: controller.open,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (m['replyToId'] != null)
+                                            Text(
+                                              '↳ ${tr(c, 'reply')}',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: QChatColors.muted,
+                                              ),
+                                            ),
+                                          if (m['mediaId'] != null)
+                                            GestureDetector(
+                                              onTap: () => context.push(
+                                                '/media/${m['mediaId']}',
+                                              ),
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 8,
+                                                ),
+                                                child: QChatIcon(
+                                                  m['kind'] == 'IMAGE'
+                                                      ? 'image'
+                                                      : 'file',
+                                                  size: 40,
+                                                ),
+                                              ),
+                                            ),
+                                          Text(
+                                            m['recalledAt'] != null
+                                                ? tr(c, 'recalled')
+                                                : m['text'] ?? '',
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ),
-                                Text(
-                                  m['recalledAt'] != null
-                                      ? tr(c, 'recalled')
-                                      : m['text'] ?? '',
+                              ),
+                              if (i == lastOutgoing)
+                                MessageStatus(
+                                  status: ref
+                                      .read(clientProvider)
+                                      .messageStatus(m, members),
+                                  onRetry: () =>
+                                      ref.read(clientProvider).flush(),
                                 ),
-                              ],
-                            ),
-                          ),
-                          if (i == lastOutgoing)
-                            MessageStatus(
-                              status: ref
-                                  .read(clientProvider)
-                                  .messageStatus(m, members),
-                              onRetry: () => ref.read(clientProvider).flush(),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                  ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
           ),
+          if (selecting)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TButton(
+                  variant: TButtonVariant.text,
+                  onPressed: selected.isEmpty
+                      ? null
+                      : () => forward(
+                          messages
+                              .where((m) => selected.contains(m['id']))
+                              .toList(),
+                        ),
+                  child: Text(tr(c, 'forward')),
+                ),
+                TButton(
+                  variant: TButtonVariant.text,
+                  onPressed: selected.isEmpty
+                      ? null
+                      : () => deleteMessages(
+                          messages
+                              .where((m) => selected.contains(m['id']))
+                              .toList(),
+                        ),
+                  child: Text(tr(c, 'delete')),
+                ),
+                TButton(
+                  variant: TButtonVariant.text,
+                  onPressed: () => setState(() {
+                    selecting = false;
+                    selected.clear();
+                  }),
+                  child: Text(tr(c, 'cancel')),
+                ),
+              ],
+            ),
           if (reply != null)
             QChatListTile(
               title: tr(c, 'reply'),

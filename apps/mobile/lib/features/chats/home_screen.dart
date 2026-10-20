@@ -7,6 +7,7 @@ import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
 import '../../core/design_system/reference_widgets.dart';
 import '../../core/design_system/media_widgets.dart';
+import '../../core/design_system/dialogs.dart';
 import '../../core/localization/strings.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -99,57 +100,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: index == 2
             ? discover(c)
             : FutureBuilder<dynamic>(
-            key: ValueKey(index),
-            future: data,
-            builder: (c, s) {
-              if (s.hasError && !ref.read(clientProvider).offline.value) {
-                return QChatError(error: s.error!, retry: () => setState(load));
-              }
-              if (index == 3) {
-                return me(c, s.data as Map? ?? {'nickname': '', 'qchatId': ''});
-              }
-              var items = (s.data as List? ?? [])
-                  .where(
-                    (item) =>
-                        (index == 0
-                                ? conversationName(item)
-                                : item['friend']['nickname'])
-                            .toString()
-                            .toLowerCase()
-                            .contains(search.text.toLowerCase()),
-                  )
-                  .toList();
-              if (index == 0) {
-                bool pinned(dynamic chat) => (chat['members'] as List).any(
-                  (m) =>
-                      m['userId'] == ref.read(clientProvider).userId &&
-                      m['pinned'] == true,
-                );
-                final ordered = [
-                  ...items.where(pinned),
-                  ...items.where((item) => !pinned(item)),
-                ];
-                items = ordered;
-              }
-              return Column(
-                children: [
-                  QChatSearchBar(
-                    controller: search,
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  Expanded(
-                    child: ColoredBox(
-                      color: surface(c),
-                      child: index == 0 ? chats(c, items) : contacts(c, items),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                key: ValueKey(index),
+                future: data,
+                builder: (c, s) {
+                  if (s.hasError && !ref.read(clientProvider).offline.value) {
+                    return QChatError(
+                      error: s.error!,
+                      retry: () => setState(load),
+                    );
+                  }
+                  if (index == 3) {
+                    return me(
+                      c,
+                      s.data as Map? ?? {'nickname': '', 'qchatId': ''},
+                    );
+                  }
+                  var items = (s.data as List? ?? [])
+                      .where(
+                        (item) =>
+                            (index == 0
+                                    ? conversationName(item)
+                                    : item['friend']['nickname'])
+                                .toString()
+                                .toLowerCase()
+                                .contains(search.text.toLowerCase()),
+                      )
+                      .toList();
+                  if (index == 0) {
+                    bool pinned(dynamic chat) => (chat['members'] as List).any(
+                      (m) =>
+                          m['userId'] == ref.read(clientProvider).userId &&
+                          m['pinned'] == true,
+                    );
+                    final ordered = [
+                      ...items.where(pinned),
+                      ...items.where((item) => !pinned(item)),
+                    ];
+                    items = ordered;
+                  }
+                  return Column(
+                    children: [
+                      QChatSearchBar(
+                        controller: search,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      Expanded(
+                        child: ColoredBox(
+                          color: surface(c),
+                          child: index == 0
+                              ? chats(c, items)
+                              : contacts(c, items),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
       ),
     );
   }
+
   Widget chats(BuildContext c, List items) => ListView(
     children: [
       for (final item in items) conversation(c, item),
@@ -187,19 +197,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               date.day == now.day
         ? '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}'
         : '${date.day}/${date.month}';
-    return QChatConversationTile(
-      name: conversationName(item),
-      preview: last == null
-          ? ''
-          : last['recalledAt'] != null
-          ? tr(c, 'recalled')
-          : last['text']?.toString().isNotEmpty == true
-          ? last['text']
-          : '[${last['kind']}]',
-      time: time,
-      unread: (item['sequence'] as int) - (member['readSequence'] as int),
-      onTap: () => c.push('/chat/${item['id']}'),
+    return TSwipeCell(
+      key: ValueKey(item['id']),
+      end: TSwipeCellPanel(
+        children: [
+          TSwipeCellAction(
+            backgroundColor: const Color(0xff168fe5),
+            label: tr(
+              c,
+              member['markedUnread'] == true ? 'markRead' : 'markUnread',
+            ),
+            onPressed: (_) => conversationAction(
+              item,
+              member['markedUnread'] == true ? 'read' : 'unread',
+            ),
+          ),
+          TSwipeCellAction(
+            backgroundColor: const Color(0xffff9c38),
+            label: tr(c, 'hideChat'),
+            onPressed: (_) => conversationAction(item, 'hide'),
+          ),
+          TSwipeCellAction(
+            backgroundColor: const Color(0xfffa5151),
+            label: tr(c, 'delete'),
+            onPressed: (_) => conversationAction(item, 'delete'),
+          ),
+        ],
+      ),
+      child: QChatConversationTile(
+        name: conversationName(item),
+        avatar: item['kind'] == 'DIRECT'
+            ? UserAvatar(
+                (item['members'] as List).firstWhere(
+                  (m) => m['userId'] != ref.read(clientProvider).userId,
+                  orElse: () => member,
+                )['user'],
+              )
+            : null,
+        preview: last == null
+            ? ''
+            : last['recalledAt'] != null
+            ? tr(c, 'recalled')
+            : last['text']?.toString().isNotEmpty == true
+            ? last['text']
+            : '[${last['kind']}]',
+        time: time,
+        unread: member['markedUnread'] == true
+            ? 1
+            : ((item['sequence'] as int) - (member['readSequence'] as int))
+                  .clamp(0, 999),
+        onTap: () => c.push('/chat/${item['id']}'),
+      ),
     );
+  }
+
+  Future<void> conversationAction(Map item, String action) async {
+    if (action == 'delete' &&
+        !await confirmAction(
+          context,
+          tr(context, 'delete'),
+          tr(context, 'deleteChatNote'),
+        )) {
+      return;
+    }
+    try {
+      final client = ref.read(clientProvider);
+      final id = item['id'];
+      if (action == 'delete') {
+        await client.clearHistory(id, hide: true);
+      } else if (action == 'read') {
+        await client.post('/conversations/$id/read', {
+          'sequence': item['sequence'],
+        });
+      } else {
+        await client.dio.patch(
+          '/conversations/$id/state',
+          data: action == 'hide' ? {'hidden': true} : {'markedUnread': true},
+        );
+      }
+      await client.local?.removeCache('/conversations');
+      if (mounted) {
+        setState(() => data = client.get('/conversations', cached: false));
+      }
+    } catch (_) {
+      if (mounted) {
+        await TDialog.show<void>(
+          context,
+          dialog: TDialog(content: Text(tr(context, 'networkError'))),
+        );
+      }
+    }
   }
 
   Widget contacts(BuildContext c, List items) {
@@ -264,23 +351,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       : item['remark'],
                   leading: UserAvatar(item['friend'], size: 42),
                   trailing: const SizedBox.shrink(),
-                  onTap: () async {
-                    try {
-                      final conversation = await ref.read(clientProvider).post(
-                        '/conversations',
-                        {
-                          'memberIds': [item['friend']['id']],
-                        },
-                      );
-                      if (c.mounted) c.push('/chat/${conversation['id']}');
-                    } catch (_) {
-                      if (c.mounted) {
-                        qchatSheet(c, [
-                          (tr(c, 'networkError'), () => setState(load)),
-                        ]);
-                      }
-                    }
-                  },
+                  onTap: () => c.push('/user/${item['friend']['id']}'),
                 ),
             ],
             Padding(

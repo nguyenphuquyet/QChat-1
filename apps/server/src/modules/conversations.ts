@@ -19,16 +19,25 @@ export async function conversationsRoute(
 ) {
   const [, id, sub, target] = path;
   if (!id) {
-    if (method === "GET")
-      return db.conversation.findMany({
+    if (method === "GET") {
+      const conversations = await db.conversation.findMany({
         where: { members: { some: { userId, hidden: false } } },
         include: {
           members: { include: { user: { select: publicUser } } },
-          messages: { orderBy: { sequence: "desc" }, take: 1 },
+          messages: {
+            where: { states: { none: { userId, hidden: true } } },
+            orderBy: { sequence: "desc" }, take: 1,
+          },
         },
         orderBy: { updatedAt: "desc" },
         take: 100,
       });
+      return conversations.map(c => ({
+        ...c,
+        messages: c.messages.filter(message =>
+          message.sequence > (c.members.find(member => member.userId === userId)?.clearedSequence ?? 0)),
+      }));
+    }
     if (method === "POST") {
       const v = z
         .object({
@@ -96,8 +105,8 @@ export async function conversationsRoute(
         where: {
           conversationId: id,
           sequence: before
-            ? { lt: z.coerce.number().int().positive().parse(before) }
-            : { gt: after },
+            ? { lt: z.coerce.number().int().positive().parse(before), gt: m.clearedSequence }
+            : { gt: Math.max(after, m.clearedSequence) },
           states: { none: { userId, hidden: true } },
           ...(search
             ? {
@@ -126,12 +135,40 @@ export async function conversationsRoute(
         muted: z.boolean().optional(),
         pinned: z.boolean().optional(),
         hidden: z.boolean().optional(),
+        markedUnread: z.boolean().optional(),
       })
       .strict()
       .parse(body);
     return db.conversationMember.update({
       where: { conversationId_userId: { conversationId: id, userId } },
       data,
+    });
+  }
+  if (sub === "history" && method === "DELETE") {
+    const { hide } = z.object({ hide: z.boolean().default(false) }).strict().parse(body ?? {});
+    return db.$transaction(async tx => {
+      const c = await tx.conversation.findUniqueOrThrow({ where: { id } });
+      return tx.conversationMember.update({
+        where: { conversationId_userId: { conversationId: id, userId } },
+        data: {
+          clearedSequence: c.sequence, readSequence: c.sequence,
+          deliveredSequence: c.sequence, markedUnread: false,
+          ...(hide ? { hidden: true } : {}),
+        },
+      });
+    });
+  }
+  if (!sub && method === "DELETE") {
+    const c = await db.conversation.findUniqueOrThrow({ where: { id } });
+    requireCondition(c.kind === "GROUP" && m.role === "OWNER", 403, "OWNER_REQUIRED");
+    return db.$transaction(async tx => {
+      const members = await tx.conversationMember.findMany({ where: { conversationId: id } });
+      await tx.conversation.delete({ where: { id } });
+      await tx.outbox.createMany({ data: members.map(member => ({
+        event: "conversation:deleted", room: `user:${member.userId}`,
+        payload: { conversationId: id },
+      })) });
+      return { ok: true };
     });
   }
   if (sub === "members") {

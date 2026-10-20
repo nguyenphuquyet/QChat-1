@@ -345,7 +345,7 @@ class _ScanScreenState extends State<ScanScreen> {
               uri!.pathSegments.length == 1) {
             scanned = true;
             context.pushReplacement(
-              '/friends?q=${Uri.encodeComponent(uri.pathSegments.first)}',
+              '/user?q=${Uri.encodeComponent(uri.pathSegments.first)}',
             );
             break;
           }

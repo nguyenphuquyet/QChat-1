@@ -6,6 +6,7 @@ import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
+import '../../core/design_system/media_widgets.dart';
 import '../../core/localization/strings.dart';
 import '../../core/design_system/reference_widgets.dart';
 
@@ -197,23 +198,15 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           QChatListTile(
             title: u['nickname'],
             subtitle: u['qchatId'],
-            leading: QChatAvatar(u['nickname']),
-            trailing: QChatButton(
-              tr(c, 'add'),
-              onTap: () => action(() async {
-                await ref.read(clientProvider).post('/friends/requests', {
-                  'recipientId': u['id'],
-                });
-                if (mounted) setState(() => users = []);
-              }),
-            ),
+            leading: UserAvatar(u),
+            onTap: () => c.push('/user/${u['id']}'),
           ),
         const SizedBox(height: 24),
         for (final r in requests)
           QChatListTile(
             title: r['sender']['nickname'],
             subtitle: r['sender']['qchatId'],
-            leading: QChatAvatar(r['sender']['nickname']),
+            leading: UserAvatar(r['sender']),
             onTap: () => qchatSheet(c, [
               (
                 tr(c, 'accept'),

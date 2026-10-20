@@ -106,6 +106,8 @@ model ConversationMember {
   pinned Boolean @default(false)
   hidden Boolean @default(false)
   readSequence Int @default(0)
+  markedUnread Boolean @default(false)
+  clearedSequence Int @default(0)
   deliveredSequence Int @default(0)
   @@id([conversationId,userId])
   @@index([userId,pinned])

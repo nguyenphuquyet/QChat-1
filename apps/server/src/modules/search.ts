@@ -5,6 +5,10 @@ import { publicUser } from "../services/messages";
 export async function searchRoute(userId: string, url: URL) {
   const q = z.string().trim().min(1).max(100).parse(url.searchParams.get("q"));
   const contains = { contains: q, mode: "insensitive" as const };
+  const memberships = await db.conversationMember.findMany({
+    where: { userId, hidden: false },
+    select: { conversationId: true, clearedSequence: true },
+  });
   const [friends, conversations, messages] = await Promise.all([
     db.friendship.findMany({
       where: {
@@ -29,6 +33,9 @@ export async function searchRoute(userId: string, url: URL) {
       where: {
         text: contains,
         recalledAt: null,
+        OR: memberships.map(m => ({
+          conversationId: m.conversationId, sequence: { gt: m.clearedSequence },
+        })),
         conversation: { members: { some: { userId, hidden: false } } },
         states: { none: { userId, hidden: true } },
       },

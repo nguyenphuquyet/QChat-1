@@ -265,20 +265,21 @@ class QChatAvatar extends StatelessWidget {
   final double size;
   final String? url;
   @override
-  Widget build(BuildContext c) => ClipRRect(
-    borderRadius: BorderRadius.circular(5),
-    child: Container(
-      width: size,
-      height: size,
-      color: const Color(0xffd7eade),
-      alignment: Alignment.center,
-      child: url != null
-          ? Image.network(
-              url!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, e, s) => _letter(),
-            )
-          : _letter(),
+  Widget build(BuildContext c) => Theme(
+    data: Theme.of(c).copyWith(
+      extensions: [
+        ...Theme.of(c).extensions.values.where((e) => e is! TAvatarThemeData),
+        TAvatarThemeData(
+          dimension: size,
+          squareBorderRadius: 5,
+          backgroundColor: const Color(0xffd7eade),
+        ),
+      ],
+    ),
+    child: TAvatar(
+      shape: TAvatarShape.square,
+      image: url == null ? null : NetworkImage(url!),
+      child: _letter(),
     ),
   );
   Widget _letter() => Text(
@@ -402,9 +403,11 @@ class QChatConversationTile extends StatelessWidget {
     required this.onTap,
     this.unread = 0,
     this.time = '',
+    this.avatar,
   });
   final String name, preview;
   final String time;
+  final Widget? avatar;
   final int unread;
   final VoidCallback onTap;
   @override
@@ -414,7 +417,7 @@ class QChatConversationTile extends StatelessWidget {
     leading: Stack(
       clipBehavior: Clip.none,
       children: [
-        QChatAvatar(name),
+        avatar ?? QChatAvatar(name),
         if (unread > 0)
           Positioned(right: -5, top: -5, child: QChatUnreadBadge(unread)),
       ],
@@ -539,14 +542,16 @@ class QChatChatBubble extends StatelessWidget {
     required this.name,
     required this.child,
     this.onLongPress,
+    this.avatar,
   });
   final bool mine;
   final String name;
   final Widget child;
+  final Widget? avatar;
   final VoidCallback? onLongPress;
   @override
   Widget build(BuildContext c) {
-    final avatar = QChatAvatar(name, size: 42);
+    final avatar = this.avatar ?? QChatAvatar(name, size: 42);
     final bubble = Flexible(
       child: GestureDetector(
         onLongPress: onLongPress,

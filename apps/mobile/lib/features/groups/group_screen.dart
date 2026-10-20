@@ -3,6 +3,7 @@ import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/design_system/components.dart';
+import '../../core/design_system/media_widgets.dart';
 import '../../core/localization/strings.dart';
 
 class GroupScreen extends ConsumerStatefulWidget {
@@ -73,7 +74,7 @@ class _GroupScreenState extends ConsumerState<GroupScreen> {
                       for (final f in s.data)
                         QChatListTile(
                           title: f['friend']['nickname'],
-                          leading: QChatAvatar(f['friend']['nickname']),
+                          leading: UserAvatar(f['friend']),
                           trailing: Text(
                             selected.contains(f['friendId']) ? '✓' : '○',
                             style: const TextStyle(
